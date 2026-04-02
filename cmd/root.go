@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ntotten/zproj/internal/config"
+	"github.com/ntotten/zproj/internal/update"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,12 @@ var rootCmd = &cobra.Command{
 	},
 	SilenceUsage: true,
 	Version:      version,
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		if latest := update.CheckOutdated(version); latest != "" {
+			fmt.Fprintf(os.Stderr, "\nA new version of zproj is available: %s → %s\n", version, latest)
+			fmt.Fprintf(os.Stderr, "Run 'zproj update' to upgrade.\n")
+		}
+	},
 }
 
 func Execute() {
