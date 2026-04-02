@@ -45,9 +45,21 @@ echo "Installing zproj ${VERSION} (${OS}/${ARCH})..."
 # Download and extract
 DL_DIR=$(mktemp -d)
 ARCHIVE="zproj_${VERSION}_${OS}_${ARCH}.tar.gz"
-URL="https://github.com/${REPO}/releases/download/${LATEST}/${ARCHIVE}"
 
-curl -fSL --progress-bar "$URL" -o "${DL_DIR}/${ARCHIVE}"
+if [ -n "$GITHUB_TOKEN" ]; then
+  # Use gh CLI for download (handles private repos correctly)
+  if command -v gh >/dev/null 2>&1; then
+    gh release download "$LATEST" --repo "$REPO" --pattern "$ARCHIVE" --dir "$DL_DIR"
+  else
+    # Fallback: API asset download for private repos
+    ASSET_URL=$(curl -sL -H "$AUTH_HEADER" "https://api.github.com/repos/${REPO}/releases/tags/${LATEST}" \
+      | grep -A 4 "\"name\": \"${ARCHIVE}\"" | grep '"url"' | sed -E 's/.*"(https[^"]+)".*/\1/')
+    curl -fSL --progress-bar -H "$AUTH_HEADER" -H "Accept: application/octet-stream" "$ASSET_URL" -o "${DL_DIR}/${ARCHIVE}"
+  fi
+else
+  URL="https://github.com/${REPO}/releases/download/${LATEST}/${ARCHIVE}"
+  curl -fSL --progress-bar "$URL" -o "${DL_DIR}/${ARCHIVE}"
+fi
 tar -xzf "${DL_DIR}/${ARCHIVE}" -C "$DL_DIR"
 
 # Install
