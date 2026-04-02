@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,10 +14,11 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize: clone all repos into .main directories",
+	Short: "Initialize: create config and clone repos into .main directories",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireConfig(); err != nil {
-			return err
+		// If no config exists, offer to create one interactively
+		if cfg == nil {
+			return runInitInteractive()
 		}
 		return runInit()
 	},
@@ -24,6 +26,71 @@ var initCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(initCmd)
+}
+
+const exampleConfig = `{
+  // Each group contains a set of repos that are cloned and managed together.
+  // The "default" group lives at the root; named groups get their own [folder].
+  "groups": {
+    "default": {
+      "repos": [
+        // Simplest form: just a git URL. Name and branch are inferred.
+        // Name is derived from the URL (e.g. "my-app"), branch defaults to "main".
+        "git@github.com:your-org/my-app.git",
+        "git@github.com:your-org/shared-lib.git"
+
+        // Object form lets you override name or branch:
+        // { "url": "git@github.com:your-org/api.git", "name": "api", "branch": "develop" }
+      ]
+    }
+
+    // Add more groups to organize repos separately:
+    // "backend": {
+    //   "repos": [
+    //     "git@github.com:your-org/api-service.git",
+    //     "git@github.com:your-org/worker.git"
+    //   ]
+    // }
+  }
+
+  // Optional: variables available in .template/ files
+  // "templates": {
+  //   "variables": {
+  //     "ORG": "your-org"
+  //   }
+  // }
+}
+`
+
+func runInitInteractive() error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	cfgPath := filepath.Join(cwd, config.ConfigFile)
+	fmt.Printf("No %s found in current directory.\n\n", config.ConfigFile)
+
+	if !promptYesNo("Create a new configuration file here?") {
+		fmt.Println("Aborted.")
+		return nil
+	}
+
+	if err := os.WriteFile(cfgPath, []byte(exampleConfig), 0644); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+
+	fmt.Printf("\nCreated %s\n", cfgPath)
+	fmt.Println("Edit the file to add your repos, then run 'zproj init' again to clone them.")
+	return nil
+}
+
+func promptYesNo(question string) bool {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("%s [Y/n] ", question)
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(strings.ToLower(answer))
+	return answer == "" || answer == "y" || answer == "yes"
 }
 
 func runInit() error {
