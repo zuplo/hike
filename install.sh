@@ -20,27 +20,34 @@ case "$OS" in
 esac
 
 # Get latest release tag
-LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+LATEST=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+
+if [ -z "$LATEST" ]; then
+  echo "Error: could not determine latest release. GitHub API may be rate-limited."
+  echo "Try setting GITHUB_TOKEN or run: gh release download --repo ${REPO} --pattern '*${OS}_${ARCH}*'"
+  exit 1
+fi
+
 VERSION="${LATEST#v}"
 
 echo "Installing zproj ${VERSION} (${OS}/${ARCH})..."
 
 # Download and extract
-TMPDIR=$(mktemp -d)
+DL_DIR=$(mktemp -d)
 ARCHIVE="zproj_${VERSION}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/${LATEST}/${ARCHIVE}"
 
-curl -fsSL "$URL" -o "${TMPDIR}/${ARCHIVE}"
-tar -xzf "${TMPDIR}/${ARCHIVE}" -C "$TMPDIR"
+curl -fSL --progress-bar "$URL" -o "${DL_DIR}/${ARCHIVE}"
+tar -xzf "${DL_DIR}/${ARCHIVE}" -C "$DL_DIR"
 
 # Install
 if [ -w "$INSTALL_DIR" ]; then
-  mv "${TMPDIR}/zproj" "${INSTALL_DIR}/zproj"
+  mv "${DL_DIR}/zproj" "${INSTALL_DIR}/zproj"
 else
   echo "Need sudo to install to ${INSTALL_DIR}"
-  sudo mv "${TMPDIR}/zproj" "${INSTALL_DIR}/zproj"
+  sudo mv "${DL_DIR}/zproj" "${INSTALL_DIR}/zproj"
 fi
 
-rm -rf "$TMPDIR"
+rm -rf "$DL_DIR"
 
 echo "zproj ${VERSION} installed to ${INSTALL_DIR}/zproj"
