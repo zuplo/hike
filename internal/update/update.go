@@ -13,13 +13,18 @@ import (
 )
 
 const (
-	repo         = "zuplo/zproj"
-	checkFile    = ".zproj-update-check"
+	repo          = "zuplo/zproj"
+	binDir        = ".zproj/bin"
 	checkInterval = 24 * time.Hour
 )
 
-type ghRelease struct {
-	TagName string `json:"tag_name"`
+// BinDir returns ~/.zproj/bin
+func BinDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, binDir), nil
 }
 
 // LatestVersion returns the latest release version tag (e.g. "0.1.0").
@@ -40,7 +45,7 @@ func LatestVersion() (string, error) {
 	return strings.TrimPrefix(tag, "v"), nil
 }
 
-// SelfUpdate downloads the latest release and replaces the current binary.
+// SelfUpdate downloads the latest release and replaces the binary in ~/.zproj/bin/.
 func SelfUpdate(currentVersion string) error {
 	latest, err := LatestVersion()
 	if err != nil {
@@ -51,13 +56,12 @@ func SelfUpdate(currentVersion string) error {
 		return fmt.Errorf("already at latest version (%s)", currentVersion)
 	}
 
-	execPath, err := os.Executable()
+	installDir, err := BinDir()
 	if err != nil {
-		return fmt.Errorf("could not determine executable path: %w", err)
+		return err
 	}
-	execPath, err = filepath.EvalSymlinks(execPath)
-	if err != nil {
-		return fmt.Errorf("could not resolve executable path: %w", err)
+	if err := os.MkdirAll(installDir, 0755); err != nil {
+		return fmt.Errorf("creating install dir: %w", err)
 	}
 
 	archive := fmt.Sprintf("zproj_%s_%s_%s.tar.gz", latest, runtime.GOOS, runtime.GOARCH)
@@ -86,33 +90,20 @@ func SelfUpdate(currentVersion string) error {
 		return fmt.Errorf("extract failed: %w", err)
 	}
 
-	newBinary := filepath.Join(tmpDir, "zproj")
+	// Replace binary in ~/.zproj/bin/ (no sudo needed)
+	src := filepath.Join(tmpDir, "zproj")
+	dst := filepath.Join(installDir, "zproj")
 
-	// Replace current binary: rename old, move new, remove old
-	backupPath := execPath + ".old"
-	if err := os.Rename(execPath, backupPath); err != nil {
-		return fmt.Errorf("could not backup current binary: %w", err)
-	}
-
-	if err := copyFile(newBinary, execPath); err != nil {
-		// Restore backup on failure
-		os.Rename(backupPath, execPath)
-		return fmt.Errorf("could not install new binary: %w", err)
-	}
-	os.Remove(backupPath)
-
-	// Reset the update check timestamp
-	writeCheckTimestamp()
-
-	return nil
-}
-
-func copyFile(src, dst string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading new binary: %w", err)
 	}
-	return os.WriteFile(dst, data, 0755)
+	if err := os.WriteFile(dst, data, 0755); err != nil {
+		return fmt.Errorf("writing new binary: %w", err)
+	}
+
+	writeCheckTimestamp()
+	return nil
 }
 
 // CheckOutdated checks if a newer version is available, throttled to once per day.
@@ -126,7 +117,6 @@ func CheckOutdated(currentVersion string) string {
 		return ""
 	}
 
-	// Run the check in a quick timeout so it doesn't slow down the CLI
 	type result struct {
 		version string
 	}
@@ -153,23 +143,23 @@ func CheckOutdated(currentVersion string) string {
 	}
 }
 
-func checkFilePath() string {
+func stateDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, checkFile)
+	return filepath.Join(home, ".zproj")
 }
 
 func shouldCheck() bool {
-	path := checkFilePath()
-	if path == "" {
+	dir := stateDir()
+	if dir == "" {
 		return false
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Join(dir, "update-check.json"))
 	if err != nil {
-		return true // No file = never checked
+		return true
 	}
 
 	var state checkState
@@ -181,13 +171,14 @@ func shouldCheck() bool {
 }
 
 func writeCheckTimestamp() {
-	path := checkFilePath()
-	if path == "" {
+	dir := stateDir()
+	if dir == "" {
 		return
 	}
+	os.MkdirAll(dir, 0755)
 
 	data, _ := json.Marshal(checkState{LastCheck: time.Now()})
-	os.WriteFile(path, data, 0644)
+	os.WriteFile(filepath.Join(dir, "update-check.json"), data, 0644)
 }
 
 type checkState struct {

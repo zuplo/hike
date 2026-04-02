@@ -2,7 +2,8 @@
 set -e
 
 REPO="zuplo/zproj"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+BIN_HOME="$HOME/.zproj/bin"
+LINK_DIR="${LINK_DIR:-/usr/local/bin}"
 
 # Detect OS and architecture
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -47,11 +48,9 @@ DL_DIR=$(mktemp -d)
 ARCHIVE="zproj_${VERSION}_${OS}_${ARCH}.tar.gz"
 
 if [ -n "$GITHUB_TOKEN" ]; then
-  # Use gh CLI for download (handles private repos correctly)
   if command -v gh >/dev/null 2>&1; then
     gh release download "$LATEST" --repo "$REPO" --pattern "$ARCHIVE" --dir "$DL_DIR"
   else
-    # Fallback: API asset download for private repos
     ASSET_URL=$(curl -sL -H "$AUTH_HEADER" "https://api.github.com/repos/${REPO}/releases/tags/${LATEST}" \
       | grep -A 4 "\"name\": \"${ARCHIVE}\"" | grep '"url"' | sed -E 's/.*"(https[^"]+)".*/\1/')
     curl -fSL --progress-bar -H "$AUTH_HEADER" -H "Accept: application/octet-stream" "$ASSET_URL" -o "${DL_DIR}/${ARCHIVE}"
@@ -62,14 +61,23 @@ else
 fi
 tar -xzf "${DL_DIR}/${ARCHIVE}" -C "$DL_DIR"
 
-# Install
-if [ -w "$INSTALL_DIR" ]; then
-  mv "${DL_DIR}/zproj" "${INSTALL_DIR}/zproj"
-else
-  echo "Need sudo to install to ${INSTALL_DIR}"
-  sudo mv "${DL_DIR}/zproj" "${INSTALL_DIR}/zproj"
-fi
-
+# Install binary to ~/.zproj/bin/ (no sudo needed)
+mkdir -p "$BIN_HOME"
+mv "${DL_DIR}/zproj" "${BIN_HOME}/zproj"
+chmod +x "${BIN_HOME}/zproj"
 rm -rf "$DL_DIR"
 
-echo "zproj ${VERSION} installed to ${INSTALL_DIR}/zproj"
+# Create symlink in /usr/local/bin (sudo only needed once)
+if [ -L "${LINK_DIR}/zproj" ] && [ "$(readlink "${LINK_DIR}/zproj")" = "${BIN_HOME}/zproj" ]; then
+  : # Symlink already correct
+elif [ -w "$LINK_DIR" ]; then
+  ln -sf "${BIN_HOME}/zproj" "${LINK_DIR}/zproj"
+else
+  echo "Creating symlink in ${LINK_DIR} (requires sudo)..."
+  sudo ln -sf "${BIN_HOME}/zproj" "${LINK_DIR}/zproj"
+fi
+
+echo "zproj ${VERSION} installed to ${BIN_HOME}/zproj"
+echo "Symlinked to ${LINK_DIR}/zproj"
+echo ""
+echo "Future updates need no sudo — just run: zproj update"
