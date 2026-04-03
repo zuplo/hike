@@ -43,7 +43,7 @@ type Group struct {
 }
 
 type Repo struct {
-	URL    string `yaml:"url"`
+	URL    string `yaml:"repo"`
 	Name   string `yaml:"name,omitempty"`
 	Branch string `yaml:"branch,omitempty"`
 	Hooks  *Hooks `yaml:"hooks,omitempty"`
@@ -135,7 +135,7 @@ func (g *Group) UnmarshalYAML(value *yaml.Node) error {
 			return fmt.Errorf("invalid repo entry at line %d: expected string or mapping", node.Line)
 		}
 		if repo.URL == "" {
-			return fmt.Errorf("repo entry missing url at line %d", node.Line)
+			return fmt.Errorf("repo entry missing 'repo' field at line %d", node.Line)
 		}
 		g.Repos = append(g.Repos, repo)
 	}
@@ -257,7 +257,7 @@ Your %s must have at least one group with repos. Example:
 			}
 			name := repo.RepoName()
 			if seen[name] {
-				return fmt.Errorf("config error: duplicate repo name %q in group %q\n\nUse the \"name\" field to give one a unique name:\n  - url: %s\n    name: %s-2", name, groupName, repo.URL, name)
+				return fmt.Errorf("config error: duplicate repo name %q in group %q\n\nUse the \"name\" field to give one a unique name:\n  - repo: %s\n    name: %s-2", name, groupName, repo.URL, name)
 			}
 			seen[name] = true
 		}

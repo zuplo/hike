@@ -68,7 +68,7 @@ groups:
       # - git@github.com:other-org/special-repo.git
 
       # Object form lets you override name or branch:
-      # - url: api
+      # - repo: api
       #   name: api
       #   branch: develop
 

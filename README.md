@@ -55,7 +55,7 @@ groups:
       - shared-lib
 
       # Or use an object to override name/branch
-      - url: api
+      - repo: api
         branch: develop
 
       # Full URLs still work
@@ -76,7 +76,7 @@ templates:
 - **`git` config**: set `org` to use short repo names. Supports GitHub, GitLab, Bitbucket, or any self-hosted provider via `host`.
 - **Repo short name**: when `git.org` is set, just use `my-repo` instead of the full URL
 - **Repo full URL**: SSH (`git@github.com:org/repo.git`) or HTTPS (`https://...`) still works
-- **Repo object**: `url` (required), `name` (optional), `branch` (optional, defaults to `main`)
+- **Repo object**: `repo` (required), `name` (optional), `branch` (optional, defaults to `main`)
 - **Groups**: every group gets a `[group-name]/` directory. Set `default: true` on one group to use it when `--group` is omitted. If only one group exists, it's the default automatically.
 - **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `--group mktg`)
 
@@ -96,7 +96,7 @@ groups:
       onCreate: pnpm install
     repos:
       - my-app
-      - url: legacy-service
+      - repo: legacy-service
         # Repo-level override — only this repo uses yarn
         hooks:
           onCreate: yarn install
@@ -132,7 +132,8 @@ zproj init
 
 Clone any missing repos and sync all `.main` repos to the latest `origin/HEAD`. This is the command to run after editing your config to add new repos.
 
-**Warning:** Sync performs a hard reset (`git reset --hard`) on `.main` repos to match the remote. Any uncommitted or unpushed changes in `.main` directories **will be lost**. This is by design — `.main` repos are meant to be clean mirrors of the remote. Always do your work in project worktrees (created with `zproj <name>`), never directly in `.main`.
+> [!WARNING]
+> Sync performs a hard reset (`git reset --hard`) on `.main` repos to match the remote. Any uncommitted or unpushed changes in `.main` directories **will be lost**. This is by design — `.main` repos are meant to be clean mirrors of the remote. Always do your work in project worktrees (created with `zproj <name>`), never directly in `.main`.
 
 ```sh
 zproj sync
