@@ -108,6 +108,8 @@ zproj init
 
 Clone any missing repos and sync all `.main` repos to the latest `origin/HEAD`. This is the command to run after editing your config to add new repos.
 
+**Warning:** Sync performs a hard reset (`git reset --hard`) on `.main` repos to match the remote. Any uncommitted or unpushed changes in `.main` directories **will be lost**. This is by design — `.main` repos are meant to be clean mirrors of the remote. Always do your work in project worktrees (created with `zproj <name>`), never directly in `.main`.
+
 ```sh
 zproj sync
 zproj sync --group backend
