@@ -9,7 +9,7 @@ Create isolated workspaces per feature or task, with all your repos available in
 Requires the [GitHub CLI](https://cli.github.com/) (`gh`) to be installed and authenticated (`gh auth login`).
 
 ```sh
-d=$(mktemp -d) && gh release download --repo zuplo/zproj --pattern "*$(uname -m)*.tar.gz" --dir "$d" && tar -xzf "$d"/*.tar.gz -C "$d" && mkdir -p ~/.zproj/bin && mv "$d/zproj" ~/.zproj/bin/ && sudo ln -sf ~/.zproj/bin/zproj /usr/local/bin/zproj && rm -rf "$d" && echo "zproj installed ✓"
+d=$(mktemp -d) && gh release download --repo zuplo/zproj --pattern "*$(uname -s | tr A-Z a-z)_$(uname -m)*.tar.gz" --dir "$d" && tar -xzf "$d"/*.tar.gz -C "$d" && mkdir -p ~/.zproj/bin && mv "$d/zproj" ~/.zproj/bin/ && sudo ln -sf ~/.zproj/bin/zproj /usr/local/bin/zproj && rm -rf "$d" && echo "zproj installed ✓"
 ```
 
 After the initial install, update with `zproj update` (no sudo needed).
