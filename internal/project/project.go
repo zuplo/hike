@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -60,6 +61,55 @@ func Create(root string, cfg *config.Config, name, group, color string) error {
 		return fmt.Errorf("processing templates: %w", err)
 	}
 
+	// Run onCreate hooks
+	if err := runOnCreateHooks(cfg, group, grp, projectDir); err != nil {
+		return fmt.Errorf("running hooks: %w", err)
+	}
+
+	return nil
+}
+
+func runOnCreateHooks(cfg *config.Config, groupName string, grp config.Group, projectDir string) error {
+	// Filter repos that have hooks
+	type repoHook struct {
+		repo config.Repo
+		hook string
+	}
+	var hooks []repoHook
+	for _, repo := range grp.Repos {
+		if hook := cfg.ResolveOnCreateHook(groupName, repo); hook != "" {
+			hooks = append(hooks, repoHook{repo: repo, hook: hook})
+		}
+	}
+	if len(hooks) == 0 {
+		return nil
+	}
+
+	fmt.Printf("Running onCreate hooks...\n")
+	results := git.RunParallel(hooks, func(rh repoHook) git.Result {
+		repoName := rh.repo.RepoName()
+		repoDir := filepath.Join(projectDir, repoName)
+
+		cmd := exec.Command("sh", "-c", rh.hook)
+		cmd.Dir = repoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return git.Result{Repo: repoName, Err: fmt.Errorf("%s: %w\n%s", rh.hook, err, string(out))}
+		}
+		return git.Result{Repo: repoName, Output: "done"}
+	})
+
+	var errs []string
+	for _, r := range results {
+		if r.Err != nil {
+			errs = append(errs, fmt.Sprintf("  %s: %v", r.Repo, r.Err))
+		} else {
+			fmt.Printf("  %s: hook %s\n", r.Repo, r.Output)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("hook errors:\n%s", strings.Join(errs, "\n"))
+	}
 	return nil
 }
 

@@ -79,6 +79,11 @@ groups:
   #     - api-service
   #     - worker
 
+# Lifecycle hooks — run after creating a project.
+# Repo-level overrides group-level, which overrides global.
+# hooks:
+#   onCreate: npm install
+
 # Optional: variables available in .template/ files
 # templates:
 #   variables:

@@ -15,6 +15,7 @@ const ConfigFile = "zproj.yaml"
 
 type Config struct {
 	Git       *GitConfig       `yaml:"git,omitempty"`
+	Hooks     *Hooks           `yaml:"hooks,omitempty"`
 	Groups    map[string]Group `yaml:"groups"`
 	Templates *Templates       `yaml:"templates,omitempty"`
 
@@ -30,16 +31,37 @@ type GitConfig struct {
 	SSH      bool   `yaml:"ssh,omitempty"`      // true for SSH URLs, false for HTTPS
 }
 
+type Hooks struct {
+	OnCreate string `yaml:"onCreate,omitempty"`
+}
+
 type Group struct {
 	Repos   []Repo   `yaml:"-"`
 	Default bool     `yaml:"default,omitempty"`
 	Aliases []string `yaml:"aliases,omitempty"`
+	Hooks   *Hooks   `yaml:"hooks,omitempty"`
 }
 
 type Repo struct {
 	URL    string `yaml:"url"`
 	Name   string `yaml:"name,omitempty"`
 	Branch string `yaml:"branch,omitempty"`
+	Hooks  *Hooks `yaml:"hooks,omitempty"`
+}
+
+// ResolveOnCreateHook returns the most specific onCreate hook for a repo.
+// Priority: repo > group > global. Returns empty string if none set.
+func (c *Config) ResolveOnCreateHook(groupName string, repo Repo) string {
+	if repo.Hooks != nil && repo.Hooks.OnCreate != "" {
+		return repo.Hooks.OnCreate
+	}
+	if grp, ok := c.Groups[groupName]; ok && grp.Hooks != nil && grp.Hooks.OnCreate != "" {
+		return grp.Hooks.OnCreate
+	}
+	if c.Hooks != nil && c.Hooks.OnCreate != "" {
+		return c.Hooks.OnCreate
+	}
+	return ""
 }
 
 type Templates struct {

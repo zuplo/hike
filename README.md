@@ -80,6 +80,30 @@ templates:
 - **Groups**: every group gets a `[group-name]/` directory. Set `default: true` on one group to use it when `--group` is omitted. If only one group exists, it's the default automatically.
 - **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `--group mktg`)
 
+### Hooks
+
+Lifecycle hooks run after creating a project. The most specific hook wins: **repo overrides group, group overrides global**.
+
+```yaml
+# Global default — runs for every repo unless overridden
+hooks:
+  onCreate: npm install
+
+groups:
+  platform:
+    # Group-level override — applies to all repos in this group
+    hooks:
+      onCreate: pnpm install
+    repos:
+      - my-app
+      - url: legacy-service
+        # Repo-level override — only this repo uses yarn
+        hooks:
+          onCreate: yarn install
+```
+
+Hooks run in parallel across repos for speed.
+
 ## Commands
 
 ### `zproj <name> [--group <g>] [--color <color>]`
