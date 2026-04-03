@@ -10,12 +10,13 @@ import (
 )
 
 var (
-	cfgFile  string
-	rootDir  string
-	cfg      *config.Config
-	groupArg string
-	colorArg string
-	version  = "dev"
+	cfgFile    string
+	rootDir    string
+	cfg        *config.Config
+	cfgLoadErr error
+	groupArg   string
+	colorArg   string
+	version    = "dev"
 )
 
 var rootCmd = &cobra.Command{
@@ -72,13 +73,17 @@ func initConfig() {
 	cfgPath, _ := config.FindConfigFile(root)
 	c, err := config.Load(cfgPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-		os.Exit(1)
+		// Don't fatal — commands that need config will check via requireConfig()
+		cfgLoadErr = err
+		return
 	}
 	cfg = c
 }
 
 func requireConfig() error {
+	if cfgLoadErr != nil {
+		return cfgLoadErr
+	}
 	if cfg == nil {
 		return fmt.Errorf("no %s found. Run 'zproj init' in a directory with a config file", config.ConfigFile)
 	}
