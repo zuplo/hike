@@ -28,7 +28,15 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-const exampleConfig = `# Each group contains a set of repos that are cloned and managed together.
+const exampleConfig = `# Git provider defaults — repos can use just the name (e.g. "my-app")
+# instead of full URLs when org is set.
+git:
+  # provider: github  # github (default), gitlab, bitbucket, or any host
+  # host: github.com  # auto-detected from provider, or set for self-hosted
+  org: your-org
+  # ssh: true         # use SSH URLs (default: false, uses HTTPS)
+
+# Each group contains a set of repos that are cloned and managed together.
 # Every group gets its own [groupname]/ directory.
 # Set 'default: true' on a group to use it when --group is not specified.
 groups:
@@ -36,13 +44,15 @@ groups:
     default: true
     # aliases: [plat]  # Optional: use 'plat' as shorthand for 'platform'
     repos:
-      # Simplest form: just a git URL.
-      # Name is derived from the URL (e.g. "my-app"), branch defaults to "main".
-      - git@github.com:your-org/my-app.git
-      - git@github.com:your-org/shared-lib.git
+      # With git.org set, just use the repo name:
+      - my-app
+      - shared-lib
+
+      # Or use a full URL when needed:
+      # - git@github.com:other-org/special-repo.git
 
       # Object form lets you override name or branch:
-      # - url: git@github.com:your-org/api.git
+      # - url: api
       #   name: api
       #   branch: develop
 
@@ -50,8 +60,8 @@ groups:
   # backend:
   #   aliases: [be]
   #   repos:
-  #     - git@github.com:your-org/api-service.git
-  #     - git@github.com:your-org/worker.git
+  #     - api-service
+  #     - worker
 
 # Optional: variables available in .template/ files
 # templates:

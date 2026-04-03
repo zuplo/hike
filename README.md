@@ -36,23 +36,32 @@ code my-feature/my-feature.code-workspace
 `zproj.yaml` defines your repos and groups:
 
 ```yaml
+# Git provider defaults — repos can use just the name instead of full URLs
+git:
+  org: your-org
+  # provider: github    # github (default), gitlab, bitbucket
+  # host: github.com    # auto-detected from provider, set for self-hosted
+  # ssh: true           # use SSH URLs (default: false, uses HTTPS)
+
 groups:
   platform:
     default: true       # Used when --group is not specified
     repos:
-      # Just a URL — name and branch are inferred
-      - git@github.com:your-org/my-app.git
-      - git@github.com:your-org/shared-lib.git
+      - my-app          # Expands to https://github.com/your-org/my-app.git
+      - shared-lib
 
       # Or use an object to override name/branch
-      - url: git@github.com:your-org/api.git
+      - url: api
         branch: develop
+
+      # Full URLs still work
+      - git@github.com:other-org/special-repo.git
 
   marketing:
     aliases: [mktg]     # Use 'mktg' as shorthand
     repos:
-      - git@github.com:your-org/website.git
-      - git@github.com:your-org/cms.git
+      - website
+      - cms
 
 # Optional: variables available in .template/ files
 templates:
@@ -60,7 +69,9 @@ templates:
     ORG: your-org
 ```
 
-- **Repo URL string**: name is derived from the URL (`your-org/my-app.git` -> `my-app`), branch defaults to `main`
+- **`git` config**: set `org` to use short repo names. Supports GitHub, GitLab, Bitbucket, or any self-hosted provider via `host`.
+- **Repo short name**: when `git.org` is set, just use `my-repo` instead of the full URL
+- **Repo full URL**: SSH (`git@github.com:org/repo.git`) or HTTPS (`https://...`) still works
 - **Repo object**: `url` (required), `name` (optional), `branch` (optional, defaults to `main`)
 - **Groups**: every group gets a `[group-name]/` directory. Set `default: true` on one group to use it when `--group` is omitted. If only one group exists, it's the default automatically.
 - **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `--group mktg`)
@@ -174,6 +185,34 @@ Available variables:
 - `{{.ProjectName}}` — the project name
 - `{{.Group}}` — the group name
 - Any custom variables from `templates.variables` in the config
+
+## MCP Server
+
+zproj includes a built-in MCP (Model Context Protocol) server so you can manage projects from Claude or other AI assistants.
+
+### Claude Code
+
+Add to your Claude Code MCP settings (`~/.claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "zproj": {
+      "command": "zproj",
+      "args": ["mcp"],
+      "cwd": "/path/to/your/projects"
+    }
+  }
+}
+```
+
+### Available MCP tools
+
+- `create_project` — Create a new project with worktrees
+- `delete_project` — Delete a project and its worktrees
+- `list_projects` — List all projects
+- `sync_repos` — Sync .main repos to latest
+- `project_status` — Show git status of repos in a project
 
 ## Updating
 

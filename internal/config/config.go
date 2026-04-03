@@ -14,12 +14,20 @@ import (
 const ConfigFile = "zproj.yaml"
 
 type Config struct {
+	Git       *GitConfig       `yaml:"git,omitempty"`
 	Groups    map[string]Group `yaml:"groups"`
 	Templates *Templates       `yaml:"templates,omitempty"`
 
 	// built during validation
 	aliasMap     map[string]string // alias -> canonical group name
 	defaultGroup string
+}
+
+type GitConfig struct {
+	Provider string `yaml:"provider,omitempty"` // "github", "gitlab", "bitbucket", etc.
+	Host     string `yaml:"host,omitempty"`     // e.g. "github.com", "gitlab.mycompany.com"
+	Org      string `yaml:"org,omitempty"`      // default org/owner
+	SSH      bool   `yaml:"ssh,omitempty"`      // true for SSH URLs, false for HTTPS
 }
 
 type Group struct {
@@ -112,6 +120,39 @@ func (g *Group) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// ExpandRepoURL expands a short repo name (e.g. "my-repo") to a full URL
+// using the git config. If it's already a full URL, returns it unchanged.
+func (c *Config) ExpandRepoURL(repoURL string) string {
+	// Already a full URL (SSH or HTTPS)
+	if strings.Contains(repoURL, ":") || strings.Contains(repoURL, "//") {
+		return repoURL
+	}
+
+	if c.Git == nil || c.Git.Org == "" {
+		return repoURL
+	}
+
+	host := c.Git.Host
+	if host == "" {
+		switch strings.ToLower(c.Git.Provider) {
+		case "gitlab":
+			host = "gitlab.com"
+		case "bitbucket":
+			host = "bitbucket.org"
+		default:
+			host = "github.com"
+		}
+	}
+
+	org := c.Git.Org
+	name := repoURL
+
+	if c.Git.SSH {
+		return fmt.Sprintf("git@%s:%s/%s.git", host, org, name)
+	}
+	return fmt.Sprintf("https://%s/%s/%s.git", host, org, name)
+}
+
 // Load reads and parses the config from the given path.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -123,10 +164,22 @@ func Load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing %s: %w", filepath.Base(path), err)
 	}
+	// Expand short repo names to full URLs
+	cfg.expandRepoURLs()
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+func (c *Config) expandRepoURLs() {
+	for name, group := range c.Groups {
+		for i, repo := range group.Repos {
+			group.Repos[i].URL = c.ExpandRepoURL(repo.URL)
+		}
+		c.Groups[name] = group
+	}
 }
 
 // Validate checks the config for common errors and returns helpful messages.
