@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ntotten/zproj/internal/config"
-	"github.com/ntotten/zproj/internal/git"
+	"github.com/zuplo/hike/internal/config"
+	"github.com/zuplo/hike/internal/git"
 	"github.com/spf13/cobra"
 )
 

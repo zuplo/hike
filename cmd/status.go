@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ntotten/zproj/internal/project"
+	"github.com/zuplo/hike/internal/project"
 	"github.com/spf13/cobra"
 )
 

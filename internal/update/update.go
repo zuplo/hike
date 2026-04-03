@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	repo          = "zuplo/zproj"
-	binDir        = ".zproj/bin"
+	repo          = "zuplo/hike"
+	binDir        = ".hike/bin"
 	checkInterval = 24 * time.Hour
 )
 
-// BinDir returns ~/.zproj/bin
+// BinDir returns ~/.hike/bin
 func BinDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -51,7 +51,7 @@ func LatestVersion() (string, error) {
 	return strings.TrimPrefix(release.TagName, "v"), nil
 }
 
-// SelfUpdate downloads the latest release and replaces the binary in ~/.zproj/bin/.
+// SelfUpdate downloads the latest release and replaces the binary in ~/.hike/bin/.
 func SelfUpdate(currentVersion string) error {
 	latest, err := LatestVersion()
 	if err != nil {
@@ -70,10 +70,10 @@ func SelfUpdate(currentVersion string) error {
 		return fmt.Errorf("creating install dir: %w", err)
 	}
 
-	archive := fmt.Sprintf("zproj_%s_%s_%s.tar.gz", latest, runtime.GOOS, runtime.GOARCH)
+	archive := fmt.Sprintf("hike_%s_%s_%s.tar.gz", latest, runtime.GOOS, runtime.GOARCH)
 	url := fmt.Sprintf("https://github.com/%s/releases/download/v%s/%s", repo, latest, archive)
 
-	tmpDir, err := os.MkdirTemp("", "zproj-update-*")
+	tmpDir, err := os.MkdirTemp("", "hike-update-*")
 	if err != nil {
 		return err
 	}
@@ -107,9 +107,9 @@ func SelfUpdate(currentVersion string) error {
 		return fmt.Errorf("extract failed: %w", err)
 	}
 
-	// Replace binary in ~/.zproj/bin/ (no sudo needed)
-	src := filepath.Join(tmpDir, "zproj")
-	dst := filepath.Join(installDir, "zproj")
+	// Replace binary in ~/.hike/bin/ (no sudo needed)
+	src := filepath.Join(tmpDir, "hike")
+	dst := filepath.Join(installDir, "hike")
 
 	data, err := os.ReadFile(src)
 	if err != nil {
@@ -165,7 +165,7 @@ func stateDir() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".zproj")
+	return filepath.Join(home, ".hike")
 }
 
 func shouldCheck() bool {

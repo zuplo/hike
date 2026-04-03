@@ -11,16 +11,16 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ntotten/zproj/internal/config"
-	"github.com/ntotten/zproj/internal/git"
+	"github.com/zuplo/hike/internal/config"
+	"github.com/zuplo/hike/internal/git"
 )
 
-// Metadata stored in each project directory as .zproj-project.json.
+// Metadata stored in each project directory as .hike-project.json.
 type Metadata struct {
 	Group string `json:"group"`
 }
 
-const metadataFile = ".zproj-project.json"
+const metadataFile = ".hike-project.json"
 
 // Create creates a new project with worktrees for all repos in the group.
 func Create(root string, cfg *config.Config, projectName, group, color string) error {
@@ -184,7 +184,7 @@ func Delete(root string, cfg *config.Config, projectName string) error {
 
 	meta, err := ReadMetadata(projectDir)
 	if err != nil {
-		return fmt.Errorf("reading project metadata: %w\n\nIs %q a zproj project?", err, projectName)
+		return fmt.Errorf("reading project metadata: %w\n\nIs %q a hike project?", err, projectName)
 	}
 
 	grp, ok := cfg.Groups[meta.Group]

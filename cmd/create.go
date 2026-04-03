@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ntotten/zproj/internal/config"
-	"github.com/ntotten/zproj/internal/names"
-	"github.com/ntotten/zproj/internal/project"
+	"github.com/zuplo/hike/internal/config"
+	"github.com/zuplo/hike/internal/names"
+	"github.com/zuplo/hike/internal/project"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func runCreateWithArgs(groupInput, name string) error {
 	} else if cfg.DefaultGroup() != "" {
 		group = cfg.DefaultGroup()
 	} else {
-		return fmt.Errorf("no group specified and no default group set in config\n\nSet a default group in %s:\n  groups:\n    mygroup:\n      default: true", "zproj.yaml")
+		return fmt.Errorf("no group specified and no default group set in config\n\nSet a default group in %s:\n  groups:\n    mygroup:\n      default: true", "hike.yaml")
 	}
 
 	// Generate name if not provided

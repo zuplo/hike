@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ntotten/zproj/internal/update"
+	"github.com/zuplo/hike/internal/update"
 	"github.com/spf13/cobra"
 )
 
 var aliasCmd = &cobra.Command{
 	Use:   "alias [name]",
-	Short: "Create a shell alias (symlink) for zproj",
-	Long:  "Create a symlink so you can invoke zproj with a shorter name (e.g. 'z').",
+	Short: "Create a shell alias (symlink) for hike",
+	Long:  "Create a symlink so you can invoke hike with a shorter name (e.g. 'z').",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := ""
@@ -31,7 +31,7 @@ var aliasCmd = &cobra.Command{
 		if name == "" {
 			return fmt.Errorf("alias name cannot be empty")
 		}
-		if name == "zproj" {
+		if name == "hike" {
 			return fmt.Errorf("alias is the same as the binary name")
 		}
 
@@ -39,13 +39,13 @@ var aliasCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(binDir, "zproj")
+		target := filepath.Join(binDir, "hike")
 
 		if _, err := os.Stat(target); os.IsNotExist(err) {
 			// Fall back to resolved executable path
 			target, err = os.Executable()
 			if err != nil {
-				return fmt.Errorf("could not find zproj binary: %w", err)
+				return fmt.Errorf("could not find hike binary: %w", err)
 			}
 			target, _ = filepath.EvalSymlinks(target)
 		}
@@ -58,7 +58,7 @@ var aliasCmd = &cobra.Command{
 			if info.Mode()&os.ModeSymlink != 0 {
 				existing, _ := os.Readlink(linkPath)
 				if existing == target {
-					fmt.Printf("Alias %q already exists and points to zproj.\n", name)
+					fmt.Printf("Alias %q already exists and points to hike.\n", name)
 					return nil
 				}
 			}
@@ -86,8 +86,8 @@ var aliasCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("Alias created: %s -> zproj\n", name)
-		fmt.Printf("You can now use '%s' instead of 'zproj'.\n", name)
+		fmt.Printf("Alias created: %s -> hike\n", name)
+		fmt.Printf("You can now use '%s' instead of 'hike'.\n", name)
 		return nil
 	},
 }

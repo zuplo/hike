@@ -1,6 +1,6 @@
 package main
 
-import "github.com/ntotten/zproj/cmd"
+import "github.com/zuplo/hike/cmd"
 
 func main() {
 	cmd.Execute()

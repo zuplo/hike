@@ -7,9 +7,9 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/ntotten/zproj/internal/config"
-	"github.com/ntotten/zproj/internal/names"
-	"github.com/ntotten/zproj/internal/project"
+	"github.com/zuplo/hike/internal/config"
+	"github.com/zuplo/hike/internal/names"
+	"github.com/zuplo/hike/internal/project"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var mcpCmd = &cobra.Command{
 	Short:  "Start MCP server (stdio transport)",
 	Hidden: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s := server.NewMCPServer("zproj", version,
+		s := server.NewMCPServer("hike", version,
 			server.WithToolCapabilities(true),
 		)
 
@@ -145,7 +145,7 @@ func handleSync(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, 
 	if err := requireConfig(); err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	return mcp.NewToolResultText("Use 'zproj sync' from the command line for sync operations."), nil
+	return mcp.NewToolResultText("Use 'hike sync' from the command line for sync operations."), nil
 }
 
 func handleStatus(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

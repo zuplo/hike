@@ -1,4 +1,4 @@
-# zproj
+# hike
 
 A fast CLI tool for managing multi-repo development workspaces using git worktrees.
 
@@ -7,45 +7,45 @@ Create isolated workspaces per feature or task, with all your repos available in
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/zuplo/zproj/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/zuplo/hike/main/install.sh | sh
 ```
 
 Or as a single command:
 
 ```sh
-d=$(mktemp -d) && curl -fsSL "https://github.com/zuplo/zproj/releases/latest/download/zproj_$(curl -sL https://api.github.com/repos/zuplo/zproj/releases/latest | grep tag_name | sed -E 's/.*"v([^"]+)".*/\1/')_$(uname -s | tr A-Z a-z)_$(uname -m).tar.gz" | tar -xz -C "$d" && mkdir -p ~/.zproj/bin && mv "$d/zproj" ~/.zproj/bin/ && sudo ln -sf ~/.zproj/bin/zproj /usr/local/bin/zproj && rm -rf "$d" && echo "zproj installed ✓"
+d=$(mktemp -d) && curl -fsSL "https://github.com/zuplo/hike/releases/latest/download/hike_$(curl -sL https://api.github.com/repos/zuplo/hike/releases/latest | grep tag_name | sed -E 's/.*"v([^"]+)".*/\1/')_$(uname -s | tr A-Z a-z)_$(uname -m).tar.gz" | tar -xz -C "$d" && mkdir -p ~/.hike/bin && mv "$d/hike" ~/.hike/bin/ && sudo ln -sf ~/.hike/bin/hike /usr/local/bin/hike && rm -rf "$d" && echo "hike installed ✓"
 ```
 
-After the initial install, update with `zproj update` (no sudo needed).
+After the initial install, update with `hike update` (no sudo needed).
 
 ## Quick Start
 
 ```sh
 # Create a new project directory and generate a config file
 mkdir my-projects && cd my-projects
-zproj init
+hike init
 
-# Edit zproj.yaml to add your repos, then sync to clone them
-zproj sync
+# Edit hike.yaml to add your repos, then sync to clone them
+hike sync
 
 # Create a workspace
-zproj platform                 # -> platform-bold-cedar/
-zproj platform my-feature      # -> platform-my-feature/
+hike platform                 # -> platform-bold-cedar/
+hike platform my-feature      # -> platform-my-feature/
 
 # Open in VS Code
 code platform-my-feature/platform-my-feature.code-workspace
 
 # Run commands from inside a project (auto-detects project)
 cd platform-my-feature
-zproj pull
-zproj push
-zproj status
-zproj delete
+hike pull
+hike push
+hike status
+hike delete
 ```
 
 ## Configuration
 
-`zproj.yaml` defines your repos and groups:
+`hike.yaml` defines your repos and groups:
 
 ```yaml
 # Git provider defaults — repos can use just the name instead of full URLs
@@ -86,7 +86,7 @@ templates:
 - **Repo full URL**: SSH (`git@github.com:org/repo.git`) or HTTPS (`https://...`) still works
 - **Repo object**: `repo` (required), `name` (optional), `branch` (optional, defaults to `main`)
 - **Groups**: repos are organized into groups. Set `default: true` on one group to use it when no group is specified. If only one group exists, it's the default automatically.
-- **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `zproj mktg`)
+- **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `hike mktg`)
 
 ### Hooks
 
@@ -114,99 +114,99 @@ Hooks run in parallel across repos for speed.
 
 ## Commands
 
-### `zproj [group] [name] [-c color]`
+### `hike [group] [name] [-c color]`
 
 Create a new project. This is the default command. The project directory is named `{group}-{name}`.
 
 ```sh
-zproj platform my-feature    # Creates platform-my-feature/
-zproj platform               # Generates random name: platform-bold-cedar/
-zproj my-feature             # Uses default group: platform-my-feature/
-zproj platform -c purple     # With a color
-zproj platform my-feature -c # Random color
+hike platform my-feature    # Creates platform-my-feature/
+hike platform               # Generates random name: platform-bold-cedar/
+hike my-feature             # Uses default group: platform-my-feature/
+hike platform -c purple     # With a color
+hike platform my-feature -c # Random color
 ```
 
 The first argument is matched against known groups — if it matches, it's treated as the group. Otherwise it's the project name (using the default group).
 
 Available colors for `-c`: `blue`, `cyan`, `green`, `indigo`, `lime`, `orange`, `pink`, `purple`, `red`, `rose`, `sky`, `slate`, `teal`, `yellow`.
 
-### `zproj init`
+### `hike init`
 
-Create a new `zproj.yaml` configuration file in the current directory.
+Create a new `hike.yaml` configuration file in the current directory.
 
 ```sh
-zproj init
+hike init
 ```
 
-### `zproj sync [-g group]`
+### `hike sync [-g group]`
 
-Clone any missing repos and sync all `.zproj/` repos to the latest `origin/HEAD`. This is the command to run after editing your config to add new repos.
+Clone any missing repos and sync all `.hike/` repos to the latest `origin/HEAD`. This is the command to run after editing your config to add new repos.
 
 > [!WARNING]
-> Sync performs a hard reset (`git reset --hard`) on `.zproj/` repos to match the remote. Any uncommitted or unpushed changes in `.zproj/` directories **will be lost**. This is by design — these repos are meant to be clean mirrors of the remote. Always do your work in project worktrees, never directly in `.zproj/`.
+> Sync performs a hard reset (`git reset --hard`) on `.hike/` repos to match the remote. Any uncommitted or unpushed changes in `.hike/` directories **will be lost**. This is by design — these repos are meant to be clean mirrors of the remote. Always do your work in project worktrees, never directly in `.hike/`.
 
 ```sh
-zproj sync
-zproj sync -g backend
+hike sync
+hike sync -g backend
 ```
 
-### `zproj pull [project-name]`
+### `hike pull [project-name]`
 
 Pull latest changes (fast-forward only) in all repos of a project. Auto-detects the project if run from inside one.
 
 ```sh
-zproj pull                   # From inside a project
-zproj pull platform-my-feat  # By name
+hike pull                   # From inside a project
+hike pull platform-my-feat  # By name
 ```
 
-### `zproj push [project-name]`
+### `hike push [project-name]`
 
 Push all repos in a project. Auto-detects the project if run from inside one.
 
 ```sh
-zproj push                   # From inside a project
-zproj push platform-my-feat  # By name
+hike push                   # From inside a project
+hike push platform-my-feat  # By name
 ```
 
-### `zproj status [project-name]`
+### `hike status [project-name]`
 
 Show the status of each repo in a project (branch, dirty state, ahead/behind). Auto-detects the project if run from inside one.
 
 ```sh
-zproj status
+hike status
 ```
 
-### `zproj delete [project-name]`
+### `hike delete [project-name]`
 
 Remove a project and its worktrees. Auto-detects the project if run from inside one.
 
 ```sh
-zproj delete                     # From inside a project
-zproj delete platform-my-feat    # By name
+hike delete                     # From inside a project
+hike delete platform-my-feat    # By name
 ```
 
-### `zproj list`
+### `hike list`
 
 List all projects.
 
 ```sh
-zproj list
+hike list
 ```
 
-### `zproj update`
+### `hike update`
 
 Self-update to the latest release.
 
 ```sh
-zproj update
+hike update
 ```
 
-### `zproj alias [name]`
+### `hike alias [name]`
 
-Create a shorter alias for the `zproj` command.
+Create a shorter alias for the `hike` command.
 
 ```sh
-zproj alias z
+hike alias z
 # Now: z platform, z pull, z sync, etc.
 ```
 
@@ -214,8 +214,8 @@ zproj alias z
 
 ```
 my-projects/
-├── zproj.yaml
-├── .zproj/                        # Hidden — main repo clones
+├── hike.yaml
+├── .hike/                        # Hidden — main repo clones
 │   ├── platform/
 │   │   ├── my-app/
 │   │   └── shared-lib/
@@ -223,7 +223,7 @@ my-projects/
 │       ├── website/
 │       └── cms/
 ├── platform-my-feature/           # A project
-│   ├── .zproj-project.json        # Metadata (group info)
+│   ├── .hike-project.json        # Metadata (group info)
 │   ├── platform-my-feature.code-workspace
 │   ├── my-app/                    # git worktree
 │   └── shared-lib/
@@ -246,7 +246,7 @@ Available variables:
 
 ## MCP Server
 
-zproj includes a built-in MCP (Model Context Protocol) server so you can manage projects from Claude or other AI assistants.
+hike includes a built-in MCP (Model Context Protocol) server so you can manage projects from Claude or other AI assistants.
 
 ### Claude Code
 
@@ -255,8 +255,8 @@ Add to your Claude Code MCP settings (`~/.claude/claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
-    "zproj": {
-      "command": "zproj",
+    "hike": {
+      "command": "hike",
       "args": ["mcp"],
       "cwd": "/path/to/your/projects"
     }
@@ -272,11 +272,11 @@ Add to your Claude Code MCP settings (`~/.claude/claude_desktop_config.json`):
 - `pull_project` — Pull latest in all repos
 - `push_project` — Push all repos
 - `project_status` — Show git status of repos in a project
-- `sync_repos` — Sync .zproj repos to latest
+- `sync_repos` — Sync .hike repos to latest
 
 ## Updating
 
-The CLI checks for updates once per day and will notify you if a newer version is available. Run `zproj update` to upgrade.
+The CLI checks for updates once per day and will notify you if a newer version is available. Run `hike update` to upgrade.
 
 ## Disclaimer
 

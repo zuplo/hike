@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ntotten/zproj/internal/config"
-	"github.com/ntotten/zproj/internal/update"
+	"github.com/zuplo/hike/internal/config"
+	"github.com/zuplo/hike/internal/update"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ var (
 var nameArg string
 
 var rootCmd = &cobra.Command{
-	Use:   "zproj [group] [name]",
+	Use:   "hike [group] [name]",
 	Short: "Git worktree project manager",
 	Long:  "Manage multi-repo development workspaces using git worktrees.",
 	Args:  cobra.MaximumNArgs(2),
@@ -37,8 +37,8 @@ var rootCmd = &cobra.Command{
 	Version:      version,
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		if latest := update.CheckOutdated(version); latest != "" {
-			fmt.Fprintf(os.Stderr, "\nA new version of zproj is available: %s → %s\n", version, latest)
-			fmt.Fprintf(os.Stderr, "Run 'zproj update' to upgrade.\n")
+			fmt.Fprintf(os.Stderr, "\nA new version of hike is available: %s → %s\n", version, latest)
+			fmt.Fprintf(os.Stderr, "Run 'hike update' to upgrade.\n")
 		}
 	},
 }
@@ -90,13 +90,13 @@ func requireConfig() error {
 		return cfgLoadErr
 	}
 	if cfg == nil {
-		return fmt.Errorf("no %s found. Run 'zproj init' in a directory with a config file", config.ConfigFile)
+		return fmt.Errorf("no %s found. Run 'hike init' in a directory with a config file", config.ConfigFile)
 	}
 	return nil
 }
 
 // resolveCreateArgs figures out group and name from positional args + flags.
-// Positional: `zproj <group> <name>`, `zproj <group>`, or `zproj <name>`.
+// Positional: `hike <group> <name>`, `hike <group>`, or `hike <name>`.
 // The first arg is checked against known groups/aliases — if it matches, it's the group.
 // Otherwise it's treated as the project name (using default group).
 func resolveCreateArgs(args []string) (group, name string) {
@@ -106,7 +106,7 @@ func resolveCreateArgs(args []string) (group, name string) {
 
 	switch len(args) {
 	case 2:
-		// zproj <group> <name>
+		// hike <group> <name>
 		if group == "" {
 			group = args[0]
 		}

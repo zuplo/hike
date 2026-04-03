@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const ConfigFile = "zproj.yaml"
+const ConfigFile = "hike.yaml"
 
 type Config struct {
 	Git       *GitConfig       `yaml:"git,omitempty"`
@@ -328,7 +328,7 @@ func FindConfigFile(dir string) (string, bool) {
 	return "", false
 }
 
-// FindRoot walks up from startDir looking for zproj.yaml.
+// FindRoot walks up from startDir looking for hike.yaml.
 func FindRoot(startDir string) (string, error) {
 	dir, err := filepath.Abs(startDir)
 	if err != nil {
@@ -346,9 +346,9 @@ func FindRoot(startDir string) (string, error) {
 	}
 }
 
-// MainDir returns the .zproj/{group} directory where bare repos live.
+// MainDir returns the .hike/{group} directory where bare repos live.
 func MainDir(root, group string) string {
-	return filepath.Join(root, ".zproj", group)
+	return filepath.Join(root, ".hike", group)
 }
 
 // ProjectDir returns the directory for a project.

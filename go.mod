@@ -1,4 +1,4 @@
-module github.com/ntotten/zproj
+module github.com/zuplo/hike
 
 go 1.24.4
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ntotten/zproj/internal/project"
+	"github.com/zuplo/hike/internal/project"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +29,7 @@ var deleteCmd = &cobra.Command{
 			}
 			_, name, err := project.DetectProject(cwd, rootDir)
 			if err != nil {
-				return fmt.Errorf("no project name given and not inside a project\n\nUsage: zproj delete <project-name>")
+				return fmt.Errorf("no project name given and not inside a project\n\nUsage: hike delete <project-name>")
 			}
 			projectName = name
 		}

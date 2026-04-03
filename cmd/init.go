@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ntotten/zproj/internal/config"
+	"github.com/zuplo/hike/internal/config"
 	"github.com/spf13/cobra"
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Create a new zproj.yaml configuration file",
+	Short: "Create a new hike.yaml configuration file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -35,7 +35,7 @@ var initCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Created %s\n", cfgPath)
-		fmt.Println("Edit the file to add your repos, then run 'zproj sync' to clone them.")
+		fmt.Println("Edit the file to add your repos, then run 'hike sync' to clone them.")
 		return nil
 	},
 }

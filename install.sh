@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-REPO="zuplo/zproj"
-BIN_HOME="$HOME/.zproj/bin"
+REPO="zuplo/hike"
+BIN_HOME="$HOME/.hike/bin"
 LINK_DIR="${LINK_DIR:-/usr/local/bin}"
 
 # Detect OS and architecture
@@ -30,33 +30,33 @@ fi
 
 VERSION="${LATEST#v}"
 
-echo "Installing zproj ${VERSION} (${OS}/${ARCH})..."
+echo "Installing hike ${VERSION} (${OS}/${ARCH})..."
 
 # Download and extract
 DL_DIR=$(mktemp -d)
-ARCHIVE="zproj_${VERSION}_${OS}_${ARCH}.tar.gz"
+ARCHIVE="hike_${VERSION}_${OS}_${ARCH}.tar.gz"
 URL="https://github.com/${REPO}/releases/download/${LATEST}/${ARCHIVE}"
 
 curl -fSL --progress-bar "$URL" -o "${DL_DIR}/${ARCHIVE}"
 tar -xzf "${DL_DIR}/${ARCHIVE}" -C "$DL_DIR"
 
-# Install binary to ~/.zproj/bin/ (no sudo needed)
+# Install binary to ~/.hike/bin/ (no sudo needed)
 mkdir -p "$BIN_HOME"
-mv "${DL_DIR}/zproj" "${BIN_HOME}/zproj"
-chmod +x "${BIN_HOME}/zproj"
+mv "${DL_DIR}/hike" "${BIN_HOME}/hike"
+chmod +x "${BIN_HOME}/hike"
 rm -rf "$DL_DIR"
 
 # Create symlink in /usr/local/bin (sudo only needed once)
-if [ -L "${LINK_DIR}/zproj" ] && [ "$(readlink "${LINK_DIR}/zproj")" = "${BIN_HOME}/zproj" ]; then
+if [ -L "${LINK_DIR}/hike" ] && [ "$(readlink "${LINK_DIR}/hike")" = "${BIN_HOME}/hike" ]; then
   : # Symlink already correct
 elif [ -w "$LINK_DIR" ]; then
-  ln -sf "${BIN_HOME}/zproj" "${LINK_DIR}/zproj"
+  ln -sf "${BIN_HOME}/hike" "${LINK_DIR}/hike"
 else
   echo "Creating symlink in ${LINK_DIR} (requires sudo)..."
-  sudo ln -sf "${BIN_HOME}/zproj" "${LINK_DIR}/zproj"
+  sudo ln -sf "${BIN_HOME}/hike" "${LINK_DIR}/hike"
 fi
 
-echo "zproj ${VERSION} installed to ${BIN_HOME}/zproj"
-echo "Symlinked to ${LINK_DIR}/zproj"
+echo "hike ${VERSION} installed to ${BIN_HOME}/hike"
+echo "Symlinked to ${LINK_DIR}/hike"
 echo ""
-echo "Future updates need no sudo — just run: zproj update"
+echo "Future updates need no sudo — just run: hike update"
