@@ -4,7 +4,8 @@ import { HomePage } from "./src/HomePage";
 import { GithubIcon } from "./src/GithubIcon";
 
 const config: ZudokuConfig = {
-  basePath: "/hike",
+  basePath: '/hike',
+  canonicalUrlOrigin: "https://zuplo.github.io",
   site: {
     title: "hike",
     logo: {
