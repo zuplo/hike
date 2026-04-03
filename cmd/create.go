@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/ntotten/zproj/internal/config"
 	"github.com/ntotten/zproj/internal/names"
 	"github.com/ntotten/zproj/internal/project"
 	"github.com/spf13/cobra"
@@ -44,18 +45,19 @@ func runCreateWithArgs(groupInput, name string) error {
 	// Generate name if not provided
 	if name == "" {
 		name = names.Generate()
-		fmt.Printf("Generated project name: %s\n", name)
 	}
+
+	projectName := config.ProjectName(group, name)
 
 	color := colorArg
 	if color == "random" {
 		color = project.RandomColor()
 	}
 
-	fmt.Printf("Creating project %q in group %q...\n", name, group)
-	if err := project.Create(rootDir, cfg, name, group, color); err != nil {
+	fmt.Printf("Creating project %q in group %q...\n", projectName, group)
+	if err := project.Create(rootDir, cfg, projectName, group, color); err != nil {
 		return err
 	}
-	fmt.Printf("Project %q created successfully.\n", name)
+	fmt.Printf("Project %q created successfully.\n", projectName)
 	return nil
 }

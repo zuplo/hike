@@ -16,39 +16,17 @@ var listCmd = &cobra.Command{
 			return err
 		}
 
-		groups := make(map[string]struct{})
-		if groupArgIsExplicit() {
-			g, err := resolveGroup()
-			if err != nil {
-				return err
-			}
-			groups[g] = struct{}{}
-		} else {
-			for g := range cfg.Groups {
-				groups[g] = struct{}{}
-			}
+		projects, err := project.List(rootDir)
+		if err != nil {
+			return err
 		}
 
-		found := false
-		for g := range groups {
-			projects, err := project.List(rootDir, g)
-			if err != nil {
-				return err
-			}
-			if len(projects) == 0 {
-				continue
-			}
-			found = true
-			if len(cfg.Groups) > 1 {
-				fmt.Printf("[%s]\n", g)
-			}
-			for _, p := range projects {
-				fmt.Printf("  %s\n", p)
-			}
-		}
-
-		if !found {
+		if len(projects) == 0 {
 			fmt.Println("No projects found.")
+			return nil
+		}
+		for _, p := range projects {
+			fmt.Println(p)
 		}
 		return nil
 	},

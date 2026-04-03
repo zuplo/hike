@@ -2,29 +2,43 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ntotten/zproj/internal/project"
 	"github.com/spf13/cobra"
 )
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete [name]",
+	Use:   "delete [project-name]",
 	Short: "Delete a project and its worktrees",
-	Args:  cobra.ExactArgs(1),
+	Long:  "Delete a project. If no name given and you're inside a project, deletes the current one.",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireConfig(); err != nil {
 			return err
 		}
-		name := args[0]
-		group, err := resolveGroup()
-		if err != nil {
+
+		var projectName string
+		if len(args) == 1 {
+			projectName = args[0]
+		} else {
+			// Try to detect from cwd
+			cwd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			_, name, err := project.DetectProject(cwd, rootDir)
+			if err != nil {
+				return fmt.Errorf("no project name given and not inside a project\n\nUsage: zproj delete <project-name>")
+			}
+			projectName = name
+		}
+
+		fmt.Printf("Deleting project %q...\n", projectName)
+		if err := project.Delete(rootDir, cfg, projectName); err != nil {
 			return err
 		}
-		fmt.Printf("Deleting project %q from group %q...\n", name, group)
-		if err := project.Delete(rootDir, cfg, name, group); err != nil {
-			return err
-		}
-		fmt.Printf("Project %q deleted.\n", name)
+		fmt.Printf("Project %q deleted.\n", projectName)
 		return nil
 	},
 }

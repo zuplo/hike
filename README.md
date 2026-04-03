@@ -28,11 +28,19 @@ zproj init
 # Edit zproj.yaml to add your repos, then sync to clone them
 zproj sync
 
-# Create a workspace (this is the default command)
-zproj my-feature
+# Create a workspace
+zproj platform                 # -> platform-bold-cedar/
+zproj platform my-feature      # -> platform-my-feature/
 
 # Open in VS Code
-code my-feature/my-feature.code-workspace
+code platform-my-feature/platform-my-feature.code-workspace
+
+# Run commands from inside a project (auto-detects project)
+cd platform-my-feature
+zproj pull
+zproj push
+zproj status
+zproj delete
 ```
 
 ## Configuration
@@ -49,7 +57,7 @@ git:
 
 groups:
   platform:
-    default: true       # Used when --group is not specified
+    default: true       # Used when group is not specified
     repos:
       - my-app          # Expands to https://github.com/your-org/my-app.git
       - shared-lib
@@ -77,8 +85,8 @@ templates:
 - **Repo short name**: when `git.org` is set, just use `my-repo` instead of the full URL
 - **Repo full URL**: SSH (`git@github.com:org/repo.git`) or HTTPS (`https://...`) still works
 - **Repo object**: `repo` (required), `name` (optional), `branch` (optional, defaults to `main`)
-- **Groups**: every group gets a `[group-name]/` directory. Set `default: true` on one group to use it when `--group` is omitted. If only one group exists, it's the default automatically.
-- **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `--group mktg`)
+- **Groups**: repos are organized into groups. Set `default: true` on one group to use it when no group is specified. If only one group exists, it's the default automatically.
+- **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `zproj mktg`)
 
 ### Hooks
 
@@ -108,46 +116,73 @@ Hooks run in parallel across repos for speed.
 
 ### `zproj [group] [name] [-c color]`
 
-Create a new project. This is the default command.
+Create a new project. This is the default command. The project directory is named `{group}-{name}`.
 
 ```sh
-zproj platform my-feature    # Group + name
-zproj platform               # Group only — generates a random name (e.g. "bold-cedar")
-zproj my-feature             # Name only — uses default group
+zproj platform my-feature    # Creates platform-my-feature/
+zproj platform               # Generates random name: platform-bold-cedar/
+zproj my-feature             # Uses default group: platform-my-feature/
 zproj platform -c purple     # With a color
 zproj platform my-feature -c # Random color
 ```
 
-Creates a directory with git worktrees for each repo and a VS Code workspace file. The first argument is matched against known groups — if it matches, it's treated as the group. Otherwise it's the project name.
+The first argument is matched against known groups — if it matches, it's treated as the group. Otherwise it's the project name (using the default group).
 
-Available colors for `--color`: `blue`, `cyan`, `green`, `indigo`, `lime`, `orange`, `pink`, `purple`, `red`, `rose`, `sky`, `slate`, `teal`, `yellow`.
+Available colors for `-c`: `blue`, `cyan`, `green`, `indigo`, `lime`, `orange`, `pink`, `purple`, `red`, `rose`, `sky`, `slate`, `teal`, `yellow`.
 
 ### `zproj init`
 
-Create a new `zproj.yaml` configuration file in the current directory. Prompts before overwriting an existing file.
+Create a new `zproj.yaml` configuration file in the current directory.
 
 ```sh
 zproj init
 ```
 
-### `zproj sync [--group <g>]`
+### `zproj sync [-g group]`
 
-Clone any missing repos and sync all `.main` repos to the latest `origin/HEAD`. This is the command to run after editing your config to add new repos.
+Clone any missing repos and sync all `.zproj/` repos to the latest `origin/HEAD`. This is the command to run after editing your config to add new repos.
 
 > [!WARNING]
-> Sync performs a hard reset (`git reset --hard`) on `.main` repos to match the remote. Any uncommitted or unpushed changes in `.main` directories **will be lost**. This is by design — `.main` repos are meant to be clean mirrors of the remote. Always do your work in project worktrees (created with `zproj <name>`), never directly in `.main`.
+> Sync performs a hard reset (`git reset --hard`) on `.zproj/` repos to match the remote. Any uncommitted or unpushed changes in `.zproj/` directories **will be lost**. This is by design — these repos are meant to be clean mirrors of the remote. Always do your work in project worktrees, never directly in `.zproj/`.
 
 ```sh
 zproj sync
-zproj sync --group backend
+zproj sync -g backend
 ```
 
-### `zproj delete <name> [--group <g>]`
+### `zproj pull [project-name]`
 
-Remove a project and its worktrees.
+Pull latest changes (fast-forward only) in all repos of a project. Auto-detects the project if run from inside one.
 
 ```sh
-zproj delete my-feature
+zproj pull                   # From inside a project
+zproj pull platform-my-feat  # By name
+```
+
+### `zproj push [project-name]`
+
+Push all repos in a project. Auto-detects the project if run from inside one.
+
+```sh
+zproj push                   # From inside a project
+zproj push platform-my-feat  # By name
+```
+
+### `zproj status [project-name]`
+
+Show the status of each repo in a project (branch, dirty state, ahead/behind). Auto-detects the project if run from inside one.
+
+```sh
+zproj status
+```
+
+### `zproj delete [project-name]`
+
+Remove a project and its worktrees. Auto-detects the project if run from inside one.
+
+```sh
+zproj delete                     # From inside a project
+zproj delete platform-my-feat    # By name
 ```
 
 ### `zproj list`
@@ -156,15 +191,6 @@ List all projects.
 
 ```sh
 zproj list
-zproj list --group backend
-```
-
-### `zproj status <name> [--group <g>]`
-
-Show the status of each repo in a project (branch, dirty state, ahead/behind).
-
-```sh
-zproj status my-feature
 ```
 
 ### `zproj update`
@@ -177,13 +203,11 @@ zproj update
 
 ### `zproj alias [name]`
 
-Create a shorter alias for the `zproj` command. Prompts for a name if not provided.
+Create a shorter alias for the `zproj` command.
 
 ```sh
 zproj alias z
-# Now you can use 'z' instead of 'zproj'
-z my-feature
-z sync
+# Now: z platform, z pull, z sync, etc.
 ```
 
 ## Directory Structure
@@ -191,28 +215,29 @@ z sync
 ```
 my-projects/
 ├── zproj.yaml
-├── [platform]/                # A group (the default)
-│   ├── .main/                 # Main repos (always on default branch)
+├── .zproj/                        # Hidden — main repo clones
+│   ├── platform/
 │   │   ├── my-app/
 │   │   └── shared-lib/
-│   └── my-feature/            # A project
-│       ├── my-feature.code-workspace
-│       ├── my-app/            # git worktree on branch "my-feature"
-│       └── shared-lib/
-├── [marketing]/               # Another group (alias: mktg)
-│   ├── .main/
-│   │   ├── website/
-│   │   └── cms/
-│   └── redesign/
-│       ├── redesign.code-workspace
+│   └── marketing/
 │       ├── website/
 │       └── cms/
-└── .template/                 # Optional: template files
+├── platform-my-feature/           # A project
+│   ├── .zproj-project.json        # Metadata (group info)
+│   ├── platform-my-feature.code-workspace
+│   ├── my-app/                    # git worktree
+│   └── shared-lib/
+├── platform-bold-cedar/           # Another project (random name)
+│   └── ...
+├── marketing-redesign/
+│   ├── website/
+│   └── cms/
+└── .template/                     # Optional: template files
 ```
 
 ## Templates
 
-Place files in `.template/` (root level) or `[group]/.template/` (group level). They are processed with Go's `text/template` and copied into each new project.
+Place files in `.template/` at the root level. They are processed with Go's `text/template` and copied into each new project.
 
 Available variables:
 - `{{.ProjectName}}` — the project name
@@ -244,8 +269,10 @@ Add to your Claude Code MCP settings (`~/.claude/claude_desktop_config.json`):
 - `create_project` — Create a new project with worktrees
 - `delete_project` — Delete a project and its worktrees
 - `list_projects` — List all projects
-- `sync_repos` — Sync .main repos to latest
+- `pull_project` — Pull latest in all repos
+- `push_project` — Push all repos
 - `project_status` — Show git status of repos in a project
+- `sync_repos` — Sync .zproj repos to latest
 
 ## Updating
 

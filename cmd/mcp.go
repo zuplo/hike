@@ -7,6 +7,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/ntotten/zproj/internal/config"
+	"github.com/ntotten/zproj/internal/names"
 	"github.com/ntotten/zproj/internal/project"
 	"github.com/spf13/cobra"
 )
@@ -22,32 +24,39 @@ var mcpCmd = &cobra.Command{
 
 		s.AddTool(mcp.NewTool("create_project",
 			mcp.WithDescription("Create a new project with git worktrees for all repos in a group"),
-			mcp.WithString("name", mcp.Required(), mcp.Description("Project name")),
 			mcp.WithString("group", mcp.Description("Group name (uses default group if omitted)")),
+			mcp.WithString("name", mcp.Description("Project name suffix (random if omitted)")),
 			mcp.WithString("color", mcp.Description("VS Code title bar color: red, orange, yellow, green, teal, blue, indigo, purple, pink, rose, sky, lime, cyan, slate")),
 		), handleCreate)
 
 		s.AddTool(mcp.NewTool("delete_project",
 			mcp.WithDescription("Delete a project and remove its worktrees"),
-			mcp.WithString("name", mcp.Required(), mcp.Description("Project name")),
-			mcp.WithString("group", mcp.Description("Group name (uses default group if omitted)")),
+			mcp.WithString("name", mcp.Required(), mcp.Description("Full project name (e.g. platform-bold-cedar)")),
 		), handleDelete)
 
 		s.AddTool(mcp.NewTool("list_projects",
-			mcp.WithDescription("List all projects, optionally filtered by group"),
-			mcp.WithString("group", mcp.Description("Group name (lists all groups if omitted)")),
+			mcp.WithDescription("List all projects"),
 		), handleList)
 
 		s.AddTool(mcp.NewTool("sync_repos",
-			mcp.WithDescription("Sync .main repos to latest origin/HEAD"),
+			mcp.WithDescription("Clone missing repos and sync .main repos to latest origin/HEAD"),
 			mcp.WithString("group", mcp.Description("Group name (syncs all groups if omitted)")),
 		), handleSync)
 
 		s.AddTool(mcp.NewTool("project_status",
 			mcp.WithDescription("Show git status of all repos in a project"),
-			mcp.WithString("name", mcp.Required(), mcp.Description("Project name")),
-			mcp.WithString("group", mcp.Description("Group name (uses default group if omitted)")),
+			mcp.WithString("name", mcp.Required(), mcp.Description("Full project name")),
 		), handleStatus)
+
+		s.AddTool(mcp.NewTool("pull_project",
+			mcp.WithDescription("Pull latest changes in all repos of a project"),
+			mcp.WithString("name", mcp.Required(), mcp.Description("Full project name")),
+		), handlePull)
+
+		s.AddTool(mcp.NewTool("push_project",
+			mcp.WithDescription("Push all repos in a project"),
+			mcp.WithString("name", mcp.Required(), mcp.Description("Full project name")),
+		), handlePush)
 
 		return server.ServeStdio(s)
 	},
@@ -79,23 +88,24 @@ func handleCreate(_ context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	name, _ := request.GetArguments()["name"].(string)
-	if name == "" {
-		return mcp.NewToolResultError("name is required"), nil
-	}
-
 	group, err := mcpResolveGroup(request.GetArguments())
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
+	name, _ := request.GetArguments()["name"].(string)
+	if name == "" {
+		name = names.Generate()
+	}
+
+	projectName := config.ProjectName(group, name)
 	color, _ := request.GetArguments()["color"].(string)
 
-	if err := project.Create(rootDir, cfg, name, group, color); err != nil {
+	if err := project.Create(rootDir, cfg, projectName, group, color); err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	return mcp.NewToolResultText(fmt.Sprintf("Project %q created in group %q.", name, group)), nil
+	return mcp.NewToolResultText(fmt.Sprintf("Project %q created in group %q.", projectName, group)), nil
 }
 
 func handleDelete(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -108,59 +118,33 @@ func handleDelete(_ context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError("name is required"), nil
 	}
 
-	group, err := mcpResolveGroup(request.GetArguments())
+	if err := project.Delete(rootDir, cfg, name); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Project %q deleted.", name)), nil
+}
+
+func handleList(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if err := requireConfig(); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	projects, err := project.List(rootDir)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	if err := project.Delete(rootDir, cfg, name, group); err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(fmt.Sprintf("Project %q deleted from group %q.", name, group)), nil
-}
-
-func handleList(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	if err := requireConfig(); err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	groups := make(map[string]struct{})
-	if g, ok := request.GetArguments()["group"].(string); ok && g != "" {
-		resolved, found := cfg.ResolveGroup(g)
-		if !found {
-			return mcp.NewToolResultError(fmt.Sprintf("group %q not found", g)), nil
-		}
-		groups[resolved] = struct{}{}
-	} else {
-		for g := range cfg.Groups {
-			groups[g] = struct{}{}
-		}
-	}
-
-	var lines []string
-	for g := range groups {
-		projects, err := project.List(rootDir, g)
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-		for _, p := range projects {
-			lines = append(lines, fmt.Sprintf("[%s] %s", g, p))
-		}
-	}
-
-	if len(lines) == 0 {
+	if len(projects) == 0 {
 		return mcp.NewToolResultText("No projects found."), nil
 	}
-	return mcp.NewToolResultText(strings.Join(lines, "\n")), nil
+	return mcp.NewToolResultText(strings.Join(projects, "\n")), nil
 }
 
-func handleSync(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleSync(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if err := requireConfig(); err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-
-	// This delegates to the same logic but we run it inline
 	return mcp.NewToolResultText("Use 'zproj sync' from the command line for sync operations."), nil
 }
 
@@ -174,12 +158,7 @@ func handleStatus(_ context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 		return mcp.NewToolResultError("name is required"), nil
 	}
 
-	group, err := mcpResolveGroup(request.GetArguments())
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-
-	statuses, err := project.GetStatus(rootDir, cfg, name, group)
+	statuses, err := project.GetStatus(rootDir, cfg, name)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -191,6 +170,58 @@ func handleStatus(_ context.Context, request mcp.CallToolRequest) (*mcp.CallTool
 			dirty = " [dirty]"
 		}
 		lines = append(lines, fmt.Sprintf("%-20s branch: %s%s", s.Repo, s.Branch, dirty))
+	}
+	return mcp.NewToolResultText(strings.Join(lines, "\n")), nil
+}
+
+func handlePull(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if err := requireConfig(); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	name, _ := request.GetArguments()["name"].(string)
+	if name == "" {
+		return mcp.NewToolResultError("name is required"), nil
+	}
+
+	results, err := project.Pull(rootDir, cfg, name)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	var lines []string
+	for _, r := range results {
+		if r.Err != nil {
+			lines = append(lines, fmt.Sprintf("%s: %v", r.Repo, r.Err))
+		} else {
+			lines = append(lines, fmt.Sprintf("%s: %s", r.Repo, r.Output))
+		}
+	}
+	return mcp.NewToolResultText(strings.Join(lines, "\n")), nil
+}
+
+func handlePush(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	if err := requireConfig(); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	name, _ := request.GetArguments()["name"].(string)
+	if name == "" {
+		return mcp.NewToolResultError("name is required"), nil
+	}
+
+	results, err := project.Push(rootDir, cfg, name)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	var lines []string
+	for _, r := range results {
+		if r.Err != nil {
+			lines = append(lines, fmt.Sprintf("%s: %v", r.Repo, r.Err))
+		} else {
+			lines = append(lines, fmt.Sprintf("%s: %s", r.Repo, r.Output))
+		}
 	}
 	return mcp.NewToolResultText(strings.Join(lines, "\n")), nil
 }

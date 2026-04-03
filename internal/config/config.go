@@ -346,13 +346,18 @@ func FindRoot(startDir string) (string, error) {
 	}
 }
 
-// GroupDir returns the directory path for a group within the root.
-// All groups get a [groupname]/ directory.
-func GroupDir(root, group string) string {
-	return filepath.Join(root, "["+group+"]")
+// MainDir returns the .zproj/{group} directory where bare repos live.
+func MainDir(root, group string) string {
+	return filepath.Join(root, ".zproj", group)
 }
 
-// MainDir returns the .main directory for a group.
-func MainDir(root, group string) string {
-	return filepath.Join(GroupDir(root, group), ".main")
+// ProjectDir returns the directory for a project.
+// Projects live at root/{projectName}.
+func ProjectDir(root, projectName string) string {
+	return filepath.Join(root, projectName)
+}
+
+// ProjectName builds a project directory name from group and name.
+func ProjectName(group, name string) string {
+	return group + "-" + name
 }

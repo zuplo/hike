@@ -76,6 +76,18 @@ func AheadBehind(repoDir, branch string) (string, error) {
 	return run(repoDir, "rev-list", "--left-right", "--count", "HEAD...origin/"+branch)
 }
 
+// PullFF performs a fast-forward only pull.
+func PullFF(repoDir string) error {
+	_, err := run(repoDir, "pull", "--ff-only")
+	return err
+}
+
+// Push pushes the current branch to origin.
+func Push(repoDir string) error {
+	_, err := run(repoDir, "push")
+	return err
+}
+
 // DeleteBranch deletes a local branch.
 func DeleteBranch(repoDir, branch string) error {
 	_, err := run(repoDir, "branch", "-D", branch)

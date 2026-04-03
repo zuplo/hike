@@ -2,31 +2,33 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ntotten/zproj/internal/project"
 	"github.com/spf13/cobra"
 )
 
 var statusCmd = &cobra.Command{
-	Use:   "status [name]",
+	Use:   "status [project-name]",
 	Short: "Show status of a project's repos",
-	Args:  cobra.ExactArgs(1),
+	Long:  "Show git status. If no name given and you're inside a project, uses the current one.",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireConfig(); err != nil {
 			return err
 		}
 
-		name := args[0]
-		group, err := resolveGroup()
-		if err != nil {
-			return err
-		}
-		statuses, err := project.GetStatus(rootDir, cfg, name, group)
+		projectName, err := resolveProjectName(args)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Project: %s (group: %s)\n\n", name, group)
+		statuses, err := project.GetStatus(rootDir, cfg, projectName)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Project: %s\n\n", projectName)
 		for _, s := range statuses {
 			dirty := ""
 			if s.Dirty {
@@ -44,4 +46,20 @@ var statusCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
+}
+
+// resolveProjectName gets project name from args or detects from cwd.
+func resolveProjectName(args []string) (string, error) {
+	if len(args) >= 1 {
+		return args[0], nil
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	_, name, err := project.DetectProject(cwd, rootDir)
+	if err != nil {
+		return "", fmt.Errorf("no project name given and not inside a project")
+	}
+	return name, nil
 }
