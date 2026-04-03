@@ -7,7 +7,7 @@ Create isolated workspaces per feature or task, with all your repos available in
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/zuplo/hike/main/install.sh | sh
+curl -fsSL https://zuplo.github.io/hike/install.sh | sh
 ```
 
 Or as a single command:

@@ -4,273 +4,638 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>hike — Git worktree project manager</title>
+  <meta name="description" content="A fast CLI for managing multi-repo workspaces with git worktrees. Create isolated workspaces across all your repos with a single command.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --green: #15803d;
-      --green-dark: #0f5c2c;
-      --yellow: #fbbf24;
-      --bg: #0f172a;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --card: #1e293b;
-      --border: #334155;
+      --green-50: #f0fdf4;
+      --green-100: #dcfce7;
+      --green-400: #4ade80;
+      --green-500: #22c55e;
+      --green-600: #16a34a;
+      --green-700: #15803d;
+      --yellow-400: #facc15;
+      --yellow-500: #eab308;
+      --bg: #050a0e;
+      --bg-elevated: #0a1118;
+      --bg-card: #0d1720;
+      --bg-code: #0b1219;
+      --text: #e8edf2;
+      --text-secondary: #8899a8;
+      --border: #1a2733;
+      --border-highlight: #1e3a2f;
+      --glow: rgba(34, 197, 94, 0.08);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.6;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
-    a { color: var(--yellow); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    a { color: var(--green-400); text-decoration: none; transition: color 0.15s; }
+    a:hover { color: var(--green-500); }
+    code, .mono {
+      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    }
     code {
-      background: var(--card);
+      background: var(--bg-code);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 0.9em;
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.85em;
     }
-    .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+
+    /* Layout */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 28px; }
+    .section { padding: 80px 0; }
+
+    /* Background effects */
+    .bg-glow {
+      position: fixed;
+      top: -40%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .content { position: relative; z-index: 1; }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(5, 10, 14, 0.8);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    nav .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    nav .logo svg { width: 28px; height: 28px; }
+    nav .links { display: flex; gap: 24px; align-items: center; }
+    nav .links a { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+    nav .links a:hover { color: var(--text); }
+    .gh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      color: var(--text) !important;
+      transition: border-color 0.15s;
+    }
+    .gh-btn:hover { border-color: var(--green-700); }
+    .gh-btn svg { width: 16px; height: 16px; fill: var(--text); }
 
     /* Hero */
     .hero {
       text-align: center;
-      padding: 80px 0 60px;
+      padding: 160px 0 100px;
     }
-    .hero svg { width: 96px; height: 96px; margin-bottom: 24px; }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--green-400);
+      margin-bottom: 32px;
+    }
+    .hero-badge svg { width: 14px; height: 14px; }
     .hero h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 12px;
+      font-size: clamp(3rem, 8vw, 5rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--text) 0%, var(--green-400) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    .hero h1 span { color: var(--green); }
-    .hero p {
-      font-size: 1.25rem;
-      color: var(--muted);
-      max-width: 540px;
-      margin: 0 auto 32px;
+    .hero .subtitle {
+      font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin: 0 auto 48px;
+      line-height: 1.6;
     }
 
     /* Install block */
-    .install {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px 20px;
-      margin: 0 auto 16px;
-      max-width: 600px;
-      position: relative;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 0.95rem;
-      overflow-x: auto;
-      white-space: nowrap;
-    }
-    .install .prompt { color: var(--muted); user-select: none; }
-    .install .cmd { color: var(--yellow); }
-
-    .buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-top: 24px;
-    }
-    .btn {
-      display: inline-block;
-      padding: 12px 28px;
-      border-radius: 8px;
+    .install-wrapper { max-width: 640px; margin: 0 auto 32px; }
+    .install-label {
+      font-size: 0.75rem;
       font-weight: 600;
-      font-size: 1rem;
-      transition: opacity 0.15s;
-    }
-    .btn:hover { opacity: 0.85; text-decoration: none; }
-    .btn-primary { background: var(--green); color: white; }
-    .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-
-    /* Features */
-    .features {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      padding: 60px 0;
-    }
-    @media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
-    .feature {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 24px;
-    }
-    .feature h3 {
-      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
       margin-bottom: 8px;
     }
-    .feature p { color: var(--muted); font-size: 0.95rem; }
-
-    /* Quick start */
-    .section { padding: 40px 0; }
-    .section h2 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    pre {
-      background: var(--card);
+    .install-box {
+      background: var(--bg-code);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px 24px;
-      overflow-x: auto;
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      border-radius: 12px;
+      padding: 18px 24px;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 0.9rem;
-      line-height: 1.7;
-      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+      position: relative;
     }
-    pre .comment { color: var(--muted); }
-    pre .cmd { color: var(--yellow); }
+    .install-box .prompt { color: var(--green-500); user-select: none; margin-right: 8px; }
+    .install-box .cmd { color: var(--text); }
+    .install-box .flag { color: var(--yellow-400); }
+
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:hover { text-decoration: none; transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green-600), var(--green-700));
+      color: white;
+      box-shadow: 0 0 24px rgba(34,197,94,0.2), 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 32px rgba(34,197,94,0.3), 0 6px 16px rgba(0,0,0,0.3);
+      color: white;
+    }
+    .btn-ghost {
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--green-700); color: var(--text); }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Features */
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--green-400);
+      margin-bottom: 12px;
+    }
+    .section h2 {
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .section .section-desc {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 520px;
+      margin-bottom: 48px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    @media (max-width: 768px) { .features-grid { grid-template-columns: 1fr; } }
+    .feat {
+      background: var(--bg-card);
+      padding: 32px;
+      transition: background 0.2s;
+    }
+    .feat:hover { background: var(--bg-elevated); }
+    .feat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 1.2rem;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.15);
+    }
+    .feat h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feat p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    /* Terminal */
+    .terminal {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+    }
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .terminal-dot:nth-child(1) { background: #ff5f57; }
+    .terminal-dot:nth-child(2) { background: #febc2e; }
+    .terminal-dot:nth-child(3) { background: #28c840; }
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .terminal pre {
+      padding: 24px;
+      margin: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      line-height: 1.8;
+    }
+    .terminal .prompt { color: var(--green-500); }
+    .terminal .comment { color: #4a6070; }
+    .terminal .cmd { color: var(--text); }
+    .terminal .flag { color: var(--yellow-400); }
+    .terminal .output { color: var(--text-secondary); }
+    .terminal .path { color: #7dd3fc; }
 
     /* Config */
-    .config-block {
-      background: var(--card);
+    .config-window {
+      background: var(--bg-code);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px 24px;
-      overflow-x: auto;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 0.9rem;
-      line-height: 1.7;
-      color: var(--text);
+      border-radius: 14px;
+      overflow: hidden;
+      max-width: 600px;
+      margin: 0 auto;
     }
-    .config-block .key { color: #7dd3fc; }
-    .config-block .val { color: #86efac; }
-    .config-block .comment { color: var(--muted); }
+    .config-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .config-bar .dot { margin-right: 12px; opacity: 0.4; }
+    .config-window pre {
+      padding: 24px;
+      margin: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      line-height: 1.8;
+    }
+    .config-window .key { color: #7dd3fc; }
+    .config-window .val { color: var(--green-400); }
+    .config-window .comment { color: #4a6070; }
+    .config-window .punct { color: var(--text-secondary); }
+
+    /* Commands */
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    @media (max-width: 600px) { .cmd-grid { grid-template-columns: 1fr; } }
+    .cmd-item {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    .cmd-item code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--green-400);
+      font-size: 0.88rem;
+      white-space: nowrap;
+    }
+    .cmd-item span {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    /* Two col layout */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    @media (max-width: 768px) {
+      .two-col { grid-template-columns: 1fr; gap: 40px; }
+    }
 
     /* Footer */
     footer {
       text-align: center;
-      padding: 40px 0;
-      color: var(--muted);
+      padding: 48px 0;
+      color: var(--text-secondary);
       font-size: 0.85rem;
       border-top: 1px solid var(--border);
     }
+    footer a { color: var(--text-secondary); }
+    footer a:hover { color: var(--green-400); }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <div class="hero">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
-      <path d="M12 104 L52 32 L64 52 L76 28 L116 104 Z" fill="#15803d" />
-      <path d="M64 104 L68 76 L60 60 L68 44 L76 28" stroke="#fbbf24" stroke-width="4" stroke-linecap="round" fill="none" />
-    </svg>
-    <h1><span>hike</span></h1>
-    <p>A fast CLI for managing multi-repo workspaces with git worktrees.</p>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
 
-    <div class="install">
-      <span class="prompt">$ </span><span class="cmd">curl -fsSL https://raw.githubusercontent.com/zuplo/hike/main/install.sh | sh</span>
+<nav>
+  <div class="container">
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+        <path d="M12 104 L52 32 L64 52 L76 28 L116 104 Z" fill="#15803d" />
+        <path d="M64 104 L68 76 L60 60 L68 44 L76 28" stroke="#fbbf24" stroke-width="4" stroke-linecap="round" fill="none" />
+      </svg>
+      hike
+    </div>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#commands">Commands</a>
+      <a href="https://github.com/zuplo/hike" class="gh-btn">
+        <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="content">
+
+  <!-- Hero -->
+  <div class="hero container">
+    <div class="hero-badge">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l2.5 5.3L16 6.2l-4 3.9.9 5.9L8 13.4 3.1 16l.9-5.9-4-3.9 5.5-.9z"/></svg>
+      Open source CLI tool
+    </div>
+    <h1>Multi-repo workspaces,<br>one command.</h1>
+    <p class="subtitle">Create isolated development environments across all your repos using git worktrees. Each workspace gets its own branches, VS Code config, and lifecycle hooks.</p>
+
+    <div class="install-wrapper">
+      <div class="install-label">Install</div>
+      <div class="install-box">
+        <span class="prompt">$</span>
+        <span class="cmd">curl </span><span class="flag">-fsSL</span><span class="cmd"> https://zuplo.github.io/hike/install.sh | sh</span>
+      </div>
     </div>
 
-    <div class="buttons">
-      <a href="https://github.com/zuplo/hike" class="btn btn-primary">GitHub</a>
-      <a href="https://github.com/zuplo/hike/releases" class="btn btn-secondary">Releases</a>
+    <div class="hero-buttons">
+      <a href="https://github.com/zuplo/hike" class="btn btn-primary">View on GitHub</a>
+      <a href="https://github.com/zuplo/hike/releases" class="btn btn-ghost">Download</a>
     </div>
   </div>
 
-  <div class="features">
-    <div class="feature">
-      <h3>Instant workspaces</h3>
-      <p>Create isolated workspaces across all your repos with a single command. Each gets its own branch and VS Code workspace.</p>
-    </div>
-    <div class="feature">
-      <h3>Fast &amp; parallel</h3>
-      <p>Clones, syncs, pulls, pushes, and hooks all run in parallel across repos. Built in Go for speed.</p>
-    </div>
-    <div class="feature">
-      <h3>Short repo names</h3>
-      <p>Set your git org once and use just the repo name. Supports GitHub, GitLab, Bitbucket, and self-hosted.</p>
-    </div>
-    <div class="feature">
-      <h3>Lifecycle hooks</h3>
-      <p>Auto-run <code>npm install</code>, <code>pnpm install</code>, or any command after creating a project. Global, group, or repo level.</p>
-    </div>
-    <div class="feature">
-      <h3>Auto-detect project</h3>
-      <p><code>hk pull</code>, <code>hk push</code>, <code>hk status</code>, and <code>hk delete</code> work from inside any project directory.</p>
-    </div>
-    <div class="feature">
-      <h3>Self-updating</h3>
-      <p>Checks for updates daily. Run <code>hk update</code> to upgrade — no sudo needed after initial install.</p>
+  <div class="divider"></div>
+
+  <!-- Features -->
+  <div class="section" id="features">
+    <div class="container">
+      <div class="section-label">Features</div>
+      <h2>Everything you need for<br>multi-repo development.</h2>
+      <p class="section-desc">Stop juggling branches across repos. Create a workspace, do your work, tear it down.</p>
+
+      <div class="features-grid">
+        <div class="feat">
+          <div class="feat-icon">&#9889;</div>
+          <h3>Instant workspaces</h3>
+          <p>One command creates worktrees for every repo in your group, with a VS Code workspace file ready to open.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">&#8694;</div>
+          <h3>Fully parallel</h3>
+          <p>Clones, syncs, pulls, pushes, and hooks run concurrently across all repos. Built in Go for speed.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">&#128279;</div>
+          <h3>Short repo names</h3>
+          <p>Set your git org once. Use <code>my-app</code> instead of the full URL. GitHub, GitLab, Bitbucket, or self-hosted.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">&#9881;</div>
+          <h3>Lifecycle hooks</h3>
+          <p>Auto-run <code>pnpm install</code> or any setup command after project creation. Global, group, or per-repo.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">&#128205;</div>
+          <h3>Context-aware</h3>
+          <p><code>hk pull</code>, <code>hk push</code>, <code>hk status</code> auto-detect your project from the current directory.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">&#8635;</div>
+          <h3>Self-updating</h3>
+          <p>Checks for updates daily. <code>hk update</code> upgrades in place with no sudo after initial install.</p>
+        </div>
+      </div>
     </div>
   </div>
 
+  <div class="divider"></div>
+
+  <!-- Quick Start -->
+  <div class="section" id="quickstart">
+    <div class="container">
+      <div class="two-col">
+        <div>
+          <div class="section-label">Quick Start</div>
+          <h2>Up and running in under a minute.</h2>
+          <p class="section-desc">Install, create a config, sync your repos, and start a new workspace. Both <code>hike</code> and <code>hk</code> are installed automatically.</p>
+        </div>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="terminal-dot"></div>
+            <div class="terminal-dot"></div>
+            <div class="terminal-dot"></div>
+            <div class="terminal-title">~/projects</div>
+          </div>
+          <pre><span class="prompt">$</span> <span class="cmd">hk init</span>
+<span class="output">Created hike.yaml</span>
+
+<span class="prompt">$</span> <span class="cmd">hk sync</span>
+<span class="output">Syncing group "platform" (3 repos)...</span>
+<span class="output">  my-app: cloned</span>
+<span class="output">  shared-lib: cloned</span>
+<span class="output">  api: cloned</span>
+
+<span class="prompt">$</span> <span class="cmd">hk platform</span>
+<span class="output">Creating "platform-bold-cedar"...</span>
+<span class="output">Project "platform-bold-cedar" created.</span>
+
+<span class="prompt">$</span> <span class="cmd">cd platform-bold-cedar</span>
+<span class="prompt">$</span> <span class="cmd">hk status</span>
+<span class="output">  my-app       branch: platform-bold-cedar</span>
+<span class="output">  shared-lib   branch: platform-bold-cedar</span>
+<span class="output">  api          branch: platform-bold-cedar</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Config -->
   <div class="section">
-    <h2>Quick Start</h2>
-    <pre><span class="comment"># Install</span>
-<span class="cmd">curl -fsSL https://raw.githubusercontent.com/zuplo/hike/main/install.sh | sh</span>
+    <div class="container">
+      <div class="two-col">
+        <div class="config-window">
+          <div class="config-bar">
+            <span class="dot">&#9679; &#9679; &#9679;</span>
+            hike.yaml
+          </div>
+          <pre><span class="key">git</span><span class="punct">:</span>
+  <span class="key">org</span><span class="punct">:</span> <span class="val">your-org</span>
 
-<span class="comment"># Set up a project directory</span>
-<span class="cmd">mkdir my-projects && cd my-projects</span>
-<span class="cmd">hk init</span>                          <span class="comment"># creates hike.yaml</span>
+<span class="key">hooks</span><span class="punct">:</span>
+  <span class="key">onCreate</span><span class="punct">:</span> <span class="val">pnpm install</span>
 
-<span class="comment"># Edit hike.yaml, then clone repos</span>
-<span class="cmd">hk sync</span>
+<span class="key">groups</span><span class="punct">:</span>
+  <span class="key">platform</span><span class="punct">:</span>
+    <span class="key">default</span><span class="punct">:</span> <span class="val">true</span>
+    <span class="key">repos</span><span class="punct">:</span>
+      <span class="punct">-</span> <span class="val">my-app</span>
+      <span class="punct">-</span> <span class="val">shared-lib</span>
+      <span class="punct">-</span> <span class="key">repo</span><span class="punct">:</span> <span class="val">api</span>
+        <span class="key">branch</span><span class="punct">:</span> <span class="val">develop</span>
 
-<span class="comment"># Create a workspace</span>
-<span class="cmd">hk platform my-feature</span>           <span class="comment"># -> platform-my-feature/</span>
-<span class="cmd">hk platform</span>                      <span class="comment"># -> platform-bold-cedar/ (random name)</span>
-
-<span class="comment"># Work inside a project</span>
-<span class="cmd">cd platform-my-feature</span>
-<span class="cmd">hk pull</span>                          <span class="comment"># pull all repos</span>
-<span class="cmd">hk push</span>                          <span class="comment"># push all repos</span>
-<span class="cmd">hk status</span>                        <span class="comment"># git status across repos</span></pre>
+  <span class="key">marketing</span><span class="punct">:</span>
+    <span class="key">aliases</span><span class="punct">:</span> <span class="punct">[</span><span class="val">mktg</span><span class="punct">]</span>
+    <span class="key">repos</span><span class="punct">:</span>
+      <span class="punct">-</span> <span class="val">website</span>
+      <span class="punct">-</span> <span class="val">cms</span></pre>
+        </div>
+        <div>
+          <div class="section-label">Configuration</div>
+          <h2>One YAML file. That's it.</h2>
+          <p class="section-desc">Define your git org, groups, repos, and hooks. Short names expand automatically. Override branch, name, or hooks per repo.</p>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="section">
-    <h2>Configuration</h2>
-    <div class="config-block"><span class="comment"># hike.yaml</span>
-<span class="key">git</span>:
-  <span class="key">org</span>: <span class="val">your-org</span>
-  <span class="comment"># ssh: true</span>
+  <div class="divider"></div>
 
-<span class="key">hooks</span>:
-  <span class="key">onCreate</span>: <span class="val">pnpm install</span>
+  <!-- Commands -->
+  <div class="section" id="commands">
+    <div class="container" style="text-align: center;">
+      <div class="section-label">Commands</div>
+      <h2>Simple, memorable commands.</h2>
+      <p class="section-desc" style="margin: 0 auto 48px;">Every command works with <code>hike</code> or <code>hk</code>.</p>
 
-<span class="key">groups</span>:
-  <span class="key">platform</span>:
-    <span class="key">default</span>: <span class="val">true</span>
-    <span class="key">repos</span>:
-      - <span class="val">my-app</span>
-      - <span class="val">shared-lib</span>
-      - <span class="key">repo</span>: <span class="val">api</span>
-        <span class="key">branch</span>: <span class="val">develop</span>
-
-  <span class="key">marketing</span>:
-    <span class="key">aliases</span>: [<span class="val">mktg</span>]
-    <span class="key">repos</span>:
-      - <span class="val">website</span>
-      - <span class="val">cms</span></div>
+      <div class="cmd-grid">
+        <div class="cmd-item"><code>hk platform</code> <span>Create workspace</span></div>
+        <div class="cmd-item"><code>hk sync</code> <span>Clone &amp; sync repos</span></div>
+        <div class="cmd-item"><code>hk pull</code> <span>Pull all repos</span></div>
+        <div class="cmd-item"><code>hk push</code> <span>Push all repos</span></div>
+        <div class="cmd-item"><code>hk status</code> <span>Git status</span></div>
+        <div class="cmd-item"><code>hk delete</code> <span>Remove workspace</span></div>
+        <div class="cmd-item"><code>hk list</code> <span>List projects</span></div>
+        <div class="cmd-item"><code>hk update</code> <span>Self-update</span></div>
+      </div>
+    </div>
   </div>
 
-  <div class="section">
-    <h2>Commands</h2>
-    <pre><span class="cmd">hk [group] [name] [-c color]</span>   <span class="comment"># Create a project (default command)</span>
-<span class="cmd">hk init</span>                        <span class="comment"># Create hike.yaml</span>
-<span class="cmd">hk sync</span>                        <span class="comment"># Clone &amp; sync repos</span>
-<span class="cmd">hk pull</span>                        <span class="comment"># Pull all repos in project</span>
-<span class="cmd">hk push</span>                        <span class="comment"># Push all repos in project</span>
-<span class="cmd">hk status</span>                      <span class="comment"># Git status across repos</span>
-<span class="cmd">hk delete</span>                      <span class="comment"># Delete project &amp; worktrees</span>
-<span class="cmd">hk list</span>                        <span class="comment"># List all projects</span>
-<span class="cmd">hk update</span>                      <span class="comment"># Self-update</span></pre>
-  </div>
 </div>
 
 <footer>
   <div class="container">
-    <p>This is not an official <a href="https://zuplo.com">Zuplo</a> product. Free and open source under the <a href="https://github.com/zuplo/hike/blob/main/LICENSE">MIT License</a>.</p>
+    <p>Not an official <a href="https://zuplo.com">Zuplo</a> product. Free &amp; open source under the <a href="https://github.com/zuplo/hike/blob/main/LICENSE">MIT License</a>.</p>
   </div>
 </footer>
 
