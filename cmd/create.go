@@ -24,7 +24,10 @@ func runCreate(name string) error {
 	if err := requireConfig(); err != nil {
 		return err
 	}
-	group := resolveGroup()
+	group, err := resolveGroup()
+	if err != nil {
+		return err
+	}
 	fmt.Printf("Creating project %q in group %q...\n", name, group)
 	if err := project.Create(rootDir, cfg, name, group, colorArg); err != nil {
 		return err

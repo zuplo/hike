@@ -28,8 +28,11 @@ func init() {
 
 func runSync() error {
 	groups := cfg.Groups
-	if g := resolveGroup(); g != "default" || !groupArgIsDefault() {
-		// Only sync the specified group
+	if groupArgIsExplicit() {
+		g, err := resolveGroup()
+		if err != nil {
+			return err
+		}
 		grp, ok := cfg.Groups[g]
 		if !ok {
 			return fmt.Errorf("group %q not found", g)
@@ -75,6 +78,6 @@ func runSync() error {
 	return nil
 }
 
-func groupArgIsDefault() bool {
-	return !rootCmd.PersistentFlags().Changed("group")
+func groupArgIsExplicit() bool {
+	return rootCmd.PersistentFlags().Changed("group")
 }

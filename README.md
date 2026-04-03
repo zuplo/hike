@@ -37,7 +37,8 @@ code my-feature/my-feature.code-workspace
 
 ```yaml
 groups:
-  default:
+  platform:
+    default: true       # Used when --group is not specified
     repos:
       # Just a URL — name and branch are inferred
       - git@github.com:your-org/my-app.git
@@ -47,10 +48,11 @@ groups:
       - url: git@github.com:your-org/api.git
         branch: develop
 
-  backend:
+  marketing:
+    aliases: [mktg]     # Use 'mktg' as shorthand
     repos:
-      - git@github.com:your-org/api-service.git
-      - git@github.com:your-org/worker.git
+      - git@github.com:your-org/website.git
+      - git@github.com:your-org/cms.git
 
 # Optional: variables available in .template/ files
 templates:
@@ -60,7 +62,8 @@ templates:
 
 - **Repo URL string**: name is derived from the URL (`your-org/my-app.git` -> `my-app`), branch defaults to `main`
 - **Repo object**: `url` (required), `name` (optional), `branch` (optional, defaults to `main`)
-- **Groups**: `default` group lives at the root. Named groups get a `[group-name]/` directory.
+- **Groups**: every group gets a `[group-name]/` directory. Set `default: true` on one group to use it when `--group` is omitted. If only one group exists, it's the default automatically.
+- **Aliases**: set `aliases: [short]` on a group to use either name in commands (e.g. `--group mktg`)
 
 ## Commands
 
@@ -144,21 +147,22 @@ z sync
 ```
 my-projects/
 ├── zproj.yaml
-├── .main/                     # Main repos (always on default branch)
-│   ├── my-app/
-│   └── shared-lib/
-├── my-feature/                # A project
-│   ├── my-feature.code-workspace
-│   ├── my-app/                # git worktree on branch "my-feature"
-│   └── shared-lib/            # git worktree on branch "my-feature"
-├── [backend]/                 # A group
+├── [platform]/                # A group (the default)
+│   ├── .main/                 # Main repos (always on default branch)
+│   │   ├── my-app/
+│   │   └── shared-lib/
+│   └── my-feature/            # A project
+│       ├── my-feature.code-workspace
+│       ├── my-app/            # git worktree on branch "my-feature"
+│       └── shared-lib/
+├── [marketing]/               # Another group (alias: mktg)
 │   ├── .main/
-│   │   ├── api-service/
-│   │   └── worker/
-│   └── fix-auth/
-│       ├── fix-auth.code-workspace
-│       ├── api-service/
-│       └── worker/
+│   │   ├── website/
+│   │   └── cms/
+│   └── redesign/
+│       ├── redesign.code-workspace
+│       ├── website/
+│       └── cms/
 └── .template/                 # Optional: template files
 ```
 

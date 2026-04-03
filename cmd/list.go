@@ -8,8 +8,8 @@ import (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all projects",
+	Use:     "list",
+	Short:   "List all projects",
 	Aliases: []string{"ls"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireConfig(); err != nil {
@@ -17,7 +17,11 @@ var listCmd = &cobra.Command{
 		}
 
 		groups := make(map[string]struct{})
-		if g := resolveGroup(); g != "default" || !groupArgIsDefault() {
+		if groupArgIsExplicit() {
+			g, err := resolveGroup()
+			if err != nil {
+				return err
+			}
 			groups[g] = struct{}{}
 		} else {
 			for g := range cfg.Groups {

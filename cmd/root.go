@@ -49,7 +49,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&groupArg, "group", "default", "group to operate on")
+	rootCmd.PersistentFlags().StringVarP(&groupArg, "group", "g", "", "group to operate on (default: the default group)")
 	rootCmd.Flags().StringVarP(&colorArg, "color", "c", "", "title bar color for VS Code workspace (e.g. #1e90ff)")
 	createCmd.Flags().StringVarP(&colorArg, "color", "c", "", "title bar color for VS Code workspace (e.g. #1e90ff)")
 }
@@ -90,6 +90,20 @@ func requireConfig() error {
 	return nil
 }
 
-func resolveGroup() string {
-	return groupArg
+func resolveGroup() (string, error) {
+	name := groupArg
+	if name == "" {
+		if cfg != nil && cfg.DefaultGroup() != "" {
+			return cfg.DefaultGroup(), nil
+		}
+		return "", fmt.Errorf("no --group specified and no default group set in config\n\nSet a default group in %s:\n  groups:\n    mygroup:\n      default: true", config.ConfigFile)
+	}
+	if cfg != nil {
+		resolved, ok := cfg.ResolveGroup(name)
+		if !ok {
+			return "", fmt.Errorf("group %q not found in config", name)
+		}
+		return resolved, nil
+	}
+	return name, nil
 }

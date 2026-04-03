@@ -29,9 +29,12 @@ func init() {
 }
 
 const exampleConfig = `# Each group contains a set of repos that are cloned and managed together.
-# The "default" group lives at the root; named groups get their own [folder].
+# Every group gets its own [groupname]/ directory.
+# Set 'default: true' on a group to use it when --group is not specified.
 groups:
-  default:
+  platform:
+    default: true
+    # aliases: [plat]  # Optional: use 'plat' as shorthand for 'platform'
     repos:
       # Simplest form: just a git URL.
       # Name is derived from the URL (e.g. "my-app"), branch defaults to "main".
@@ -45,6 +48,7 @@ groups:
 
   # Add more groups to organize repos separately:
   # backend:
+  #   aliases: [be]
   #   repos:
   #     - git@github.com:your-org/api-service.git
   #     - git@github.com:your-org/worker.git

@@ -16,7 +16,10 @@ var deleteCmd = &cobra.Command{
 			return err
 		}
 		name := args[0]
-		group := resolveGroup()
+		group, err := resolveGroup()
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Deleting project %q from group %q...\n", name, group)
 		if err := project.Delete(rootDir, cfg, name, group); err != nil {
 			return err

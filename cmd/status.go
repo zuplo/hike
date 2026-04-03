@@ -17,7 +17,10 @@ var statusCmd = &cobra.Command{
 		}
 
 		name := args[0]
-		group := resolveGroup()
+		group, err := resolveGroup()
+		if err != nil {
+			return err
+		}
 		statuses, err := project.GetStatus(rootDir, cfg, name, group)
 		if err != nil {
 			return err
