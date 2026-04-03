@@ -43,7 +43,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/dist
+          path: docs/dist/hike
 
       - id: deployment
         uses: actions/deploy-pages@v5
