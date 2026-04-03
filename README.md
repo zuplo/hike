@@ -6,16 +6,18 @@ Create isolated workspaces per feature or task, with all your repos available in
 
 ## Install
 
-Requires the [GitHub CLI](https://cli.github.com/) (`gh`) to be installed and authenticated.
+Requires the [GitHub CLI](https://cli.github.com/) (`gh`) to be installed and authenticated (`gh auth login`).
 
 ```sh
-# Download and install the latest release
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/zuplo/zproj/main/install.sh)"
-
-# Or with gh directly
-gh release download --repo zuplo/zproj --pattern '*darwin_arm64*' --dir /tmp
-tar -xzf /tmp/zproj_*_darwin_arm64.tar.gz -C /usr/local/bin
+gh release download --repo zuplo/zproj --pattern '*darwin_arm64*' --dir /tmp/zproj-install
+tar -xzf /tmp/zproj-install/zproj_*_darwin_arm64.tar.gz -C /tmp/zproj-install
+mkdir -p ~/.zproj/bin
+mv /tmp/zproj-install/zproj ~/.zproj/bin/
+sudo ln -sf ~/.zproj/bin/zproj /usr/local/bin/zproj
+rm -rf /tmp/zproj-install
 ```
+
+After the initial install, update with `zproj update` (no sudo needed).
 
 ## Quick Start
 
