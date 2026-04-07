@@ -30,6 +30,17 @@ var rootCmd = &cobra.Command{
 		if len(args) == 0 && groupArg == "" && nameArg == "" {
 			return cmd.Help()
 		}
+		// Single positional arg without flags: only allow if it resolves to a
+		// known group. Otherwise it's likely a typo or unknown subcommand.
+		if len(args) == 1 && groupArg == "" && nameArg == "" {
+			isGroup := false
+			if cfg != nil {
+				_, isGroup = cfg.ResolveGroup(args[0])
+			}
+			if !isGroup {
+				return fmt.Errorf("unknown command %q. Run 'hike --help' for usage", args[0])
+			}
+		}
 		group, name := resolveCreateArgs(args)
 		return runCreateWithArgs(group, name)
 	},
