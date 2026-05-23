@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,6 +17,7 @@ const ConfigFile = "hike.yaml"
 type Config struct {
 	Git       *GitConfig       `yaml:"git,omitempty"`
 	Hooks     *Hooks           `yaml:"hooks,omitempty"`
+	Fleet     *FleetConfig     `yaml:"fleet,omitempty"`
 	Groups    map[string]Group `yaml:"groups"`
 	Templates *Templates       `yaml:"templates,omitempty"`
 
@@ -36,17 +38,159 @@ type Hooks struct {
 }
 
 type Group struct {
-	Repos   []Repo   `yaml:"-"`
-	Default bool     `yaml:"default,omitempty"`
-	Aliases []string `yaml:"aliases,omitempty"`
-	Hooks   *Hooks   `yaml:"hooks,omitempty"`
+	Repos   []Repo       `yaml:"-"`
+	Default bool         `yaml:"default,omitempty"`
+	Aliases []string     `yaml:"aliases,omitempty"`
+	Hooks   *Hooks       `yaml:"hooks,omitempty"`
+	Fleet   *FleetConfig `yaml:"fleet,omitempty"`
 }
 
 type Repo struct {
-	URL    string `yaml:"repo"`
-	Name   string `yaml:"name,omitempty"`
-	Branch string `yaml:"branch,omitempty"`
-	Hooks  *Hooks `yaml:"hooks,omitempty"`
+	URL    string       `yaml:"repo"`
+	Name   string       `yaml:"name,omitempty"`
+	Branch string       `yaml:"branch,omitempty"`
+	Hooks  *Hooks       `yaml:"hooks,omitempty"`
+	Fleet  *FleetConfig `yaml:"fleet,omitempty"`
+}
+
+// FleetConfig holds settings for the `hike fleet` background agent supervisor.
+// Three-level precedence (repo > group > global), merged field-by-field via
+// Config.ResolveFleet.
+type FleetConfig struct {
+	Enabled              *bool       `yaml:"enabled,omitempty"`
+	ManagerModel         string      `yaml:"managerModel,omitempty"`
+	WorkerModel          string      `yaml:"workerModel,omitempty"`
+	WorkerPermissionMode string      `yaml:"workerPermissionMode,omitempty"`
+	MaxConcurrentWorkers int         `yaml:"maxConcurrentWorkers,omitempty"`
+	MaxWorkerRuntime     string      `yaml:"maxWorkerRuntime,omitempty"` // e.g. "4h", "30m"
+	MaxIdleSeconds       int         `yaml:"maxIdleSeconds,omitempty"`
+	WorkerAllowedTools   []string    `yaml:"workerAllowedTools,omitempty"`
+	WorkerDeniedTools    []string    `yaml:"workerDeniedTools,omitempty"`
+	ProjectsFile         string      `yaml:"projectsFile,omitempty"`
+	Hooks                *FleetHooks `yaml:"hooks,omitempty"`
+}
+
+// FleetHooks fire at worker lifecycle events. Shell commands; receive
+// HIKE_PROJECT, HIKE_WORKER_ID env vars and cwd=project dir.
+type FleetHooks struct {
+	OnWorkerStart string `yaml:"onWorkerStart,omitempty"`
+	OnWorkerStop  string `yaml:"onWorkerStop,omitempty"`
+	OnPlanReady   string `yaml:"onPlanReady,omitempty"`
+}
+
+// ResolvedFleet is the merged, defaults-applied fleet config for a given
+// (group, repo) pair. All fields are concrete values, never nil.
+type ResolvedFleet struct {
+	Enabled              bool
+	ManagerModel         string
+	WorkerModel          string
+	WorkerPermissionMode string
+	MaxConcurrentWorkers int
+	MaxWorkerRuntime     time.Duration
+	MaxIdleSeconds       int
+	WorkerAllowedTools   []string
+	WorkerDeniedTools    []string
+	ProjectsFile         string
+	Hooks                FleetHooks
+}
+
+// defaultFleet returns the baseline fleet config (matches the plan defaults).
+func defaultFleet() ResolvedFleet {
+	return ResolvedFleet{
+		Enabled:              false,
+		ManagerModel:         "claude-opus-4-7",
+		WorkerModel:          "claude-sonnet-4-6",
+		WorkerPermissionMode: "acceptEdits",
+		MaxConcurrentWorkers: 4,
+		MaxWorkerRuntime:     4 * time.Hour,
+		MaxIdleSeconds:       600,
+		ProjectsFile:         "PROJECTS.md",
+		WorkerAllowedTools: []string{
+			"Read",
+			"Write",
+			"Edit",
+			"Grep",
+			"Glob",
+			"Bash(git diff:*, git status:*, git log:*, npm:*, pnpm:*, go:*, cargo:*)",
+			"mcp__hike-fleet__fleet_post_status",
+			"mcp__hike-fleet__fleet_post_finding",
+			"mcp__hike-fleet__fleet_check_inbox",
+			"mcp__hike-fleet__fleet_send_to_manager",
+		},
+		WorkerDeniedTools: []string{
+			"Bash(rm:*)",
+			"Bash(git push:*)",
+			"Bash(gh pr*)",
+		},
+	}
+}
+
+// applyFleet merges non-zero fields from src into dst.
+func applyFleet(dst *ResolvedFleet, src *FleetConfig) {
+	if src == nil {
+		return
+	}
+	if src.Enabled != nil {
+		dst.Enabled = *src.Enabled
+	}
+	if src.ManagerModel != "" {
+		dst.ManagerModel = src.ManagerModel
+	}
+	if src.WorkerModel != "" {
+		dst.WorkerModel = src.WorkerModel
+	}
+	if src.WorkerPermissionMode != "" {
+		dst.WorkerPermissionMode = src.WorkerPermissionMode
+	}
+	if src.MaxConcurrentWorkers > 0 {
+		dst.MaxConcurrentWorkers = src.MaxConcurrentWorkers
+	}
+	if src.MaxWorkerRuntime != "" {
+		if d, err := time.ParseDuration(src.MaxWorkerRuntime); err == nil {
+			dst.MaxWorkerRuntime = d
+		}
+	}
+	if src.MaxIdleSeconds > 0 {
+		dst.MaxIdleSeconds = src.MaxIdleSeconds
+	}
+	if len(src.WorkerAllowedTools) > 0 {
+		dst.WorkerAllowedTools = src.WorkerAllowedTools
+	}
+	if len(src.WorkerDeniedTools) > 0 {
+		dst.WorkerDeniedTools = src.WorkerDeniedTools
+	}
+	if src.ProjectsFile != "" {
+		dst.ProjectsFile = src.ProjectsFile
+	}
+	if src.Hooks != nil {
+		if src.Hooks.OnWorkerStart != "" {
+			dst.Hooks.OnWorkerStart = src.Hooks.OnWorkerStart
+		}
+		if src.Hooks.OnWorkerStop != "" {
+			dst.Hooks.OnWorkerStop = src.Hooks.OnWorkerStop
+		}
+		if src.Hooks.OnPlanReady != "" {
+			dst.Hooks.OnPlanReady = src.Hooks.OnPlanReady
+		}
+	}
+}
+
+// ResolveFleet returns the merged fleet config for a (group, repo).
+// Repo overrides Group overrides Global. Pass repo=nil for project-level resolution.
+func (c *Config) ResolveFleet(groupName string, repo *Repo) ResolvedFleet {
+	out := defaultFleet()
+	if c.Fleet != nil {
+		applyFleet(&out, c.Fleet)
+	}
+	if groupName != "" {
+		if grp, ok := c.Groups[groupName]; ok && grp.Fleet != nil {
+			applyFleet(&out, grp.Fleet)
+		}
+	}
+	if repo != nil && repo.Fleet != nil {
+		applyFleet(&out, repo.Fleet)
+	}
+	return out
 }
 
 // ResolveOnCreateHook returns the most specific onCreate hook for a repo.
@@ -110,9 +254,11 @@ func (c *Config) ResolveGroup(nameOrAlias string) (string, bool) {
 func (g *Group) UnmarshalYAML(value *yaml.Node) error {
 	// Decode the known fields first
 	type groupFields struct {
-		Default bool     `yaml:"default,omitempty"`
-		Aliases []string `yaml:"aliases,omitempty"`
-		Repos   []yaml.Node `yaml:"repos"`
+		Default bool         `yaml:"default,omitempty"`
+		Aliases []string     `yaml:"aliases,omitempty"`
+		Hooks   *Hooks       `yaml:"hooks,omitempty"`
+		Fleet   *FleetConfig `yaml:"fleet,omitempty"`
+		Repos   []yaml.Node  `yaml:"repos"`
 	}
 	var raw groupFields
 	if err := value.Decode(&raw); err != nil {
@@ -121,6 +267,8 @@ func (g *Group) UnmarshalYAML(value *yaml.Node) error {
 
 	g.Default = raw.Default
 	g.Aliases = raw.Aliases
+	g.Hooks = raw.Hooks
+	g.Fleet = raw.Fleet
 
 	for _, node := range raw.Repos {
 		var repo Repo

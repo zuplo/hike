@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/zuplo/hike/internal/config"
 	"github.com/zuplo/hike/internal/git"
@@ -21,6 +22,16 @@ type Metadata struct {
 }
 
 const metadataFile = ".hike-project.json"
+
+// FleetMarker stored in each project directory as .hike-fleet.json when the
+// project is under fleet management. Presence alone signals managed=true;
+// the struct holds future-proofing fields.
+type FleetMarker struct {
+	Managed   bool   `json:"managed"`
+	CreatedAt string `json:"createdAt,omitempty"` // RFC3339
+}
+
+const fleetMarkerFile = ".hike-fleet.json"
 
 // TemplateData is the data passed to all templates during project creation.
 type TemplateData struct {
@@ -113,6 +124,44 @@ func ReadMetadata(projectDir string) (*Metadata, error) {
 		return nil, err
 	}
 	return &meta, nil
+}
+
+// MarkFleetManaged writes .hike-fleet.json into projectDir, claiming the
+// project for fleet supervision. Idempotent: rewrites if already present.
+func MarkFleetManaged(projectDir string) error {
+	marker := FleetMarker{
+		Managed:   true,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	data, err := json.MarshalIndent(marker, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(projectDir, fleetMarkerFile), append(data, '\n'), 0644)
+}
+
+// IsFleetManaged reports whether the project directory has a .hike-fleet.json
+// marker. Returns (false, nil) when the file does not exist; (false, err) on
+// any other error.
+func IsFleetManaged(projectDir string) (bool, error) {
+	_, err := os.Stat(filepath.Join(projectDir, fleetMarkerFile))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+// UnmarkFleetManaged removes the .hike-fleet.json marker. Idempotent: returns
+// nil if the file is already absent.
+func UnmarkFleetManaged(projectDir string) error {
+	err := os.Remove(filepath.Join(projectDir, fleetMarkerFile))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // DetectProject checks if the given directory is inside a project.
